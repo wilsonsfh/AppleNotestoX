@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Review app — design direction comparison</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; background: #e9e9ec; color: #18181b; padding: 32px; }
+  .head { max-width: 1100px; margin: 0 auto 24px; }
+  .head h1 { font-size: 1.4rem; font-weight: 650; letter-spacing: -0.02em; }
+  .head p { color: #52525b; margin-top: 6px; font-size: 0.95rem; }
+  .grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .col > .label { display:flex; align-items:center; gap:8px; font-size: 0.8rem; font-weight:600; text-transform: uppercase; letter-spacing: 0.06em; color:#71717a; margin-bottom: 10px; }
+  .pill { font-size:0.7rem; padding:2px 8px; border-radius:999px; background:#dcdce0; color:#3f3f46; letter-spacing:0.02em; }
+  .pill.rec { background:#1f1147; color:#c9c2ff; }
+  .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.10); }
+
+  /* ---------- Direction A: Editorial Calm ---------- */
+  .A { background:#faf8f4; color:#1a1a18; padding:28px; min-height:420px; font-family: ui-sans-serif, -apple-system, sans-serif; }
+  .A .top { display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #e7e1d6; padding-bottom:14px; }
+  .A .brand { font-family: ui-serif, Georgia, "Times New Roman", serif; font-size:1.15rem; font-weight:600; letter-spacing:-0.01em; }
+  .A .due { font-size:0.8rem; color:#8a7f6a; }
+  .A .deck { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.12em; color:#b08d57; margin:26px 0 10px; }
+  .A .q { font-family: ui-serif, Georgia, serif; font-size:1.7rem; line-height:1.25; letter-spacing:-0.01em; max-width:34ch; }
+  .A .a { font-size:1rem; line-height:1.6; color:#4b463c; margin-top:16px; max-width:48ch; }
+  .A .a b { color:#1a1a18; }
+  .A .bar { height:3px; background:#ece6da; border-radius:99px; margin:24px 0 18px; }
+  .A .bar i { display:block; width:42%; height:100%; background:#b08d57; border-radius:99px; }
+  .A .grades { display:flex; gap:8px; }
+  .A .g { flex:1; text-align:center; padding:10px 0; border:1px solid #e2dac9; border-radius:10px; font-size:0.82rem; background:#fff; color:#5b5446; }
+  .A .g.good { border-color:#b08d57; color:#7a5a1f; }
+  .A .meta { margin-top:18px; font-size:0.75rem; color:#a99f8a; }
+
+  /* ---------- Direction B: Crisp Product (dark) ---------- */
+  .B { background:#0e0f13; color:#e7e7ea; padding:28px; min-height:420px; font-family: ui-sans-serif, -apple-system, "Segoe UI", sans-serif; position:relative; }
+  .B::before { content:""; position:absolute; inset:0; background:radial-gradient(900px 300px at 80% -10%, rgba(91,108,255,.18), transparent 70%); pointer-events:none; }
+  .B .top { display:flex; justify-content:space-between; align-items:center; position:relative; }
+  .B .brand { font-weight:650; letter-spacing:-0.02em; font-size:1rem; display:flex; align-items:center; gap:8px; }
+  .B .dot { width:9px; height:9px; border-radius:3px; background:#5b6cff; box-shadow:0 0 12px #5b6cff; }
+  .B .chip { font-size:0.72rem; color:#a1a1aa; border:1px solid #26272e; padding:4px 9px; border-radius:8px; }
+  .B .deck { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.14em; color:#6f78ff; margin:30px 0 12px; font-weight:600; }
+  .B .q { font-size:1.55rem; line-height:1.25; letter-spacing:-0.02em; font-weight:600; max-width:32ch; }
+  .B .a { font-size:0.96rem; line-height:1.6; color:#a1a1aa; margin-top:14px; max-width:46ch; }
+  .B .a b { color:#e7e7ea; font-weight:600; }
+  .B .bar { height:6px; background:#1a1b21; border-radius:99px; margin:26px 0 18px; overflow:hidden; }
+  .B .bar i { display:block; width:42%; height:100%; background:linear-gradient(90deg,#5b6cff,#8b7bff); border-radius:99px; }
+  .B .grades { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .B .g { text-align:center; padding:11px 0 9px; border:1px solid #24252c; border-radius:10px; background:#15161b; font-size:0.82rem; color:#c7c7cd; }
+  .B .g small { display:block; font-size:0.64rem; color:#5b5b66; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .B .g.good { border-color:#5b6cff; color:#fff; background:linear-gradient(#1a1d2e,#15161b); }
+  .B .g.good small { color:#9aa3ff; }
+  .B .meta { margin-top:18px; font-size:0.74rem; color:#6b6b75; font-variant-numeric:tabular-nums; }
+  .note { max-width:1100px; margin:22px auto 0; color:#52525b; font-size:0.85rem; line-height:1.6; }
+  .note b{color:#27272a}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Review app — pick a visual direction</h1>
+    <p>Same screen (flashcard review), two design languages, real content from your wiki. Keyboard: Space flips, 1–4 grades.</p>
+  </div>
+
+  <div class="grid">
+    <!-- Direction A -->
+    <div class="col">
+      <div class="label">Direction A <span class="pill">Editorial Calm</span></div>
+      <div class="frame">
+        <div class="A">
+          <div class="top">
+            <div class="brand">Wiki Review</div>
+            <div class="due">12 due today · 4-day streak</div>
+          </div>
+          <div class="deck">Concept · Career</div>
+          <div class="q">What does “the crux” mean, and how should you use it?</div>
+          <div class="a">From rock climbing: the <b>single biggest obstacle</b> on the path to the top. Identify it, <b>focus there first</b>, and iterate — don't spread effort evenly across easy moves.</div>
+          <div class="bar"><i></i></div>
+          <div class="grades">
+            <div class="g">Again</div>
+            <div class="g">Hard</div>
+            <div class="g good">Good</div>
+            <div class="g">Easy</div>
+          </div>
+          <div class="meta">Linked: outcome-oriented-mindset · prioritisation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction B -->
+    <div class="col">
+      <div class="label">Direction B <span class="pill rec">Crisp Product · recommended</span></div>
+      <div class="frame">
+        <div class="B">
+          <div class="top">
+            <div class="brand"><span class="dot"></span> Wiki Review</div>
+            <div class="chip">12 due · 4-day streak</div>
+          </div>
+          <div class="deck">Concept · Career</div>
+          <div class="q">What does “the crux” mean, and how should you use it?</div>
+          <div class="a">From rock climbing: the <b>single biggest obstacle</b> on the path to the top. Identify it, <b>focus there first</b>, and iterate — don't spread effort evenly across easy moves.</div>
+          <div class="bar"><i></i></div>
+          <div class="grades">
+            <div class="g">Again<small>&lt;1m</small></div>
+            <div class="g">Hard<small>1d</small></div>
+            <div class="g good">Good<small>4d</small></div>
+            <div class="g">Easy<small>9d</small></div>
+          </div>
+          <div class="meta">Linked: outcome-oriented-mindset · prioritisation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note"><b>Recommendation: Direction B (Crisp Product).</b> A focused dark surface with one electric accent, tight type with tabular numerals, SR intervals shown on each grade, and restrained motion — the “premium tool” feel (Linear / Airfoil-grade), and it carries the concept-map and narrated-recap views better. Direction A (Editorial Calm) is calmer/reading-first but less suited to a graph + dashboard. Building B; it ships with a light theme too.</p>
+</body>
+</html>
