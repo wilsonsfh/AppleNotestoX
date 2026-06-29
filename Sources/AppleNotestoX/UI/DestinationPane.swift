@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct DestinationPane: View {
     @Environment(AppState.self) private var state
@@ -6,6 +7,45 @@ struct DestinationPane: View {
     @State private var newPageTitle = ""
 
     var body: some View {
+        @Bindable var state = state
+
+        VStack(alignment: .leading, spacing: 0) {
+            Picker("", selection: $state.exportDestination) {
+                Text("Notion").tag(AppState.ExportDestination.notion)
+                Text("Wiki").tag(AppState.ExportDestination.wiki)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            switch state.exportDestination {
+            case .notion: notionPane
+            case .wiki: wikiPane
+            }
+        }
+        .sheet(isPresented: $showCreatePage) {
+            CreatePageSheet(
+                title: $newPageTitle,
+                onCancel: { showCreatePage = false },
+                onConfirm: {
+                    let parentID = state.selectedNotionPageID
+                    let title = newPageTitle
+                    showCreatePage = false
+                    Task {
+                        if let parent = parentID, !title.isEmpty {
+                            _ = await state.createNotionSubPage(parentID: parent, title: title)
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    // MARK: - Notion
+
+    @ViewBuilder private var notionPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Notion").font(.headline)
@@ -60,21 +100,49 @@ struct DestinationPane: View {
                 .listStyle(.sidebar)
             }
         }
-        .sheet(isPresented: $showCreatePage) {
-            CreatePageSheet(
-                title: $newPageTitle,
-                onCancel: { showCreatePage = false },
-                onConfirm: {
-                    let parentID = state.selectedNotionPageID
-                    let title = newPageTitle
-                    showCreatePage = false
-                    Task {
-                        if let parent = parentID, !title.isEmpty {
-                            _ = await state.createNotionSubPage(parentID: parent, title: title)
-                        }
-                    }
-                }
-            )
+    }
+
+    // MARK: - Wiki
+
+    @ViewBuilder private var wikiPane: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("LLM Wiki").font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Vault folder").font(.caption).foregroundStyle(.secondary)
+                Text(state.vaultURL?.path ?? "No vault chosen")
+                    .font(.callout)
+                    .foregroundStyle(state.vaultURL == nil ? Color.secondary : Color.primary)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                Button("Choose vault…") { chooseVault() }
+                Text("Notes export to raw/journal/ with screenshots in raw/assets/. Then ask opencode to ingest.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+
+            Spacer()
+        }
+    }
+
+    private func chooseVault() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK, let url = panel.url {
+            state.chooseVault(url)
         }
     }
 }

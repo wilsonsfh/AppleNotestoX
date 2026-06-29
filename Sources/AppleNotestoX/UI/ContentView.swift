@@ -22,7 +22,7 @@ struct ContentView: View {
                         ProgressView().controlSize(.small)
                         Text(progressLabel)
                     }
-                } else if !state.archiveProgress.isEmpty {
+                } else if hasProgress {
                     Text(summaryLabel).foregroundStyle(.secondary)
                 }
             }
@@ -40,9 +40,15 @@ struct ContentView: View {
                     Image(systemName: "gear")
                 }
 
-                Button("Archive…") { showPreview = true }
-                    .keyboardShortcut(.return, modifiers: [.command])
-                    .disabled(state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil || state.isArchiving)
+                if isWiki {
+                    Button("Export to wiki") { Task { await state.runWikiExport() } }
+                        .keyboardShortcut(.return, modifiers: [.command])
+                        .disabled(state.selectedNoteIDs.isEmpty || state.vaultURL == nil || state.isArchiving)
+                } else {
+                    Button("Archive…") { showPreview = true }
+                        .keyboardShortcut(.return, modifiers: [.command])
+                        .disabled(state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil || state.isArchiving)
+                }
             }
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
@@ -55,23 +61,41 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Progress helpers (destination-aware)
+
+    private var isWiki: Bool { state.exportDestination == .wiki }
+
+    private var progressTotal: Int {
+        isWiki ? state.wikiProgress.count : state.archiveProgress.count
+    }
+
+    private var progressDone: Int {
+        if isWiki {
+            return state.wikiProgress.filter { if case .done = $0.status { return true } else { return false } }.count
+        }
+        return state.archiveProgress.filter { if case .done = $0.status { return true } else { return false } }.count
+    }
+
+    private var progressFailed: Int {
+        if isWiki {
+            return state.wikiProgress.filter { if case .failed = $0.status { return true } else { return false } }.count
+        }
+        return state.archiveProgress.filter { if case .failed = $0.status { return true } else { return false } }.count
+    }
+
+    private var hasProgress: Bool {
+        isWiki ? !state.wikiProgress.isEmpty : !state.archiveProgress.isEmpty
+    }
+
     private var progressLabel: String {
-        let total = state.archiveProgress.count
-        let done = state.archiveProgress.filter {
-            if case .done = $0.status { return true } else { return false }
-        }.count
-        return "Archiving \(done + 1)/\(total)"
+        let verb = isWiki ? "Exporting" : "Archiving"
+        let total = max(progressTotal, 1)
+        return "\(verb) \(min(progressDone + 1, total))/\(progressTotal)"
     }
 
     private var summaryLabel: String {
-        let total = state.archiveProgress.count
-        let done = state.archiveProgress.filter {
-            if case .done = $0.status { return true } else { return false }
-        }.count
-        let failed = state.archiveProgress.filter {
-            if case .failed = $0.status { return true } else { return false }
-        }.count
-        if failed == 0 { return "✓ Archived \(done)/\(total)" }
-        return "Archived \(done)/\(total) — \(failed) failed"
+        let verb = isWiki ? "Exported" : "Archived"
+        if progressFailed == 0 { return "✓ \(verb) \(progressDone)/\(progressTotal)" }
+        return "\(verb) \(progressDone)/\(progressTotal) — \(progressFailed) failed"
     }
 }
