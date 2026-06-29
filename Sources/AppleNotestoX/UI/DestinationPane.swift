@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct DestinationPane: View {
     @Environment(AppState.self) private var state
@@ -128,6 +129,21 @@ struct DestinationPane: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Divider().padding(.vertical, 4)
+
+                Text("Video").font(.caption).foregroundStyle(.secondary)
+                Toggle("Transcribe video attachments", isOn: Binding(
+                    get: { state.transcribeNoteVideos },
+                    set: { state.transcribeNoteVideos = $0 }
+                ))
+                .toggleStyle(.checkbox)
+                Button("Import video…") { chooseVideo() }
+                    .disabled(state.vaultURL == nil || state.isArchiving)
+                Text("Transcribes on-device (Apple Speech) + extracts keyframes into a transcript note.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(12)
 
@@ -143,6 +159,18 @@ struct DestinationPane: View {
         panel.prompt = "Choose"
         if panel.runModal() == .OK, let url = panel.url {
             state.chooseVault(url)
+        }
+    }
+
+    private func chooseVideo() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
+        panel.prompt = "Import"
+        if panel.runModal() == .OK, let url = panel.url {
+            Task { await state.importVideo(url: url) }
         }
     }
 }

@@ -13,6 +13,7 @@ struct WikiVaultConfig: Sendable, Equatable {
 struct WikiExportJob: Sendable {
     let noteIDs: [String]
     let config: WikiVaultConfig
+    var transcribeVideos: Bool = false
 }
 
 struct WikiExportResult: Sendable, Equatable {

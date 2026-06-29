@@ -37,6 +37,7 @@ final class AppState {
     var exportDestination: ExportDestination = .notion
     var vaultURL: URL? = nil
     var wikiProgress: [WikiExportProgress] = []
+    var transcribeNoteVideos = false
 
     // Services
     let notes: AppleNotesService
@@ -45,6 +46,7 @@ final class AppState {
     let log: ArchiveLog
     let coordinator: ArchiveCoordinator
     let wikiCoordinator: WikiExportCoordinator
+    let videoCoordinator: VideoIngestCoordinator
 
     private let keychain = Keychain(service: "com.applenotestox.app")
     private let vaultBookmarkKey = "wiki_vault_bookmark"
@@ -60,6 +62,7 @@ final class AppState {
         self.images = i
         self.coordinator = ArchiveCoordinator(notes: a, notion: n, images: i, log: l)
         self.wikiCoordinator = WikiExportCoordinator(notes: a)
+        self.videoCoordinator = VideoIngestCoordinator()
         restoreVaultBookmark()
     }
 
@@ -220,7 +223,11 @@ final class AppState {
         let didAccess = vault.startAccessingSecurityScopedResource()
         defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
 
-        let job = WikiExportJob(noteIDs: Array(selectedNoteIDs), config: WikiVaultConfig(vaultURL: vault))
+        let job = WikiExportJob(
+            noteIDs: Array(selectedNoteIDs),
+            config: WikiVaultConfig(vaultURL: vault),
+            transcribeVideos: transcribeNoteVideos
+        )
         isArchiving = true
         wikiProgress = []
         let stream = wikiCoordinator.export(job: job, hierarchy: h)
@@ -229,6 +236,30 @@ final class AppState {
         }
         isArchiving = false
         selectedNoteIDs.removeAll()
+    }
+
+    /// Transcribes a user-chosen video file directly into the vault as a transcript note.
+    func importVideo(url: URL) async {
+        guard let vault = vaultURL else { return }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+
+        let id = url.path
+        isArchiving = true
+        wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .converting)]
+        do {
+            let result = try await videoCoordinator.ingest(
+                videoURL: url,
+                title: nil,
+                modified: Date(),
+                config: WikiVaultConfig(vaultURL: vault),
+                sourceApp: "imported-file"
+            )
+            wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .done(result: result))]
+        } catch {
+            wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .failed(message: error.localizedDescription))]
+        }
+        isArchiving = false
     }
 }
 

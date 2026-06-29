@@ -6,10 +6,16 @@ import Foundation
 actor WikiExportCoordinator {
     private let notes: AppleNotesService
     private let assembler: WikiExportAssembler
+    private let videoCoordinator: VideoIngestCoordinator
 
-    init(notes: AppleNotesService, assembler: WikiExportAssembler = WikiExportAssembler()) {
+    init(
+        notes: AppleNotesService,
+        assembler: WikiExportAssembler = WikiExportAssembler(),
+        videoCoordinator: VideoIngestCoordinator = VideoIngestCoordinator()
+    ) {
         self.notes = notes
         self.assembler = assembler
+        self.videoCoordinator = videoCoordinator
     }
 
     nonisolated func export(job: WikiExportJob, hierarchy: AppleNotesHierarchy) -> AsyncStream<[WikiExportProgress]> {
@@ -72,6 +78,20 @@ actor WikiExportCoordinator {
         )
 
         update(idx, .writing)
+
+        // Optionally transcribe any video attachments into sibling transcript notes.
+        if job.transcribeVideos {
+            for attachment in content.attachments where VideoSupport.isVideo(url: attachment.localURL) {
+                _ = try? await videoCoordinator.ingest(
+                    videoURL: attachment.localURL,
+                    title: "\(title) — video",
+                    modified: modified,
+                    config: job.config,
+                    sourceApp: "apple-notes"
+                )
+            }
+        }
+
         update(idx, .done(result: result))
     }
 }
