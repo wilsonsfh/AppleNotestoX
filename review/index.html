@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Wiki Review</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Data: committed sample first (always loads), then generated (overrides if present). -->
+  <script src="study-data.sample.js"></script>
+  <script src="study-data.js" onerror="/* no generated data yet — sample is used */"></script>
+
+  <!-- Libraries (order: helpers → data model → engines → views → app). -->
+  <script src="js/ui.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/srs.js"></script>
+  <script src="js/tts.js"></script>
+  <script src="js/flashcards.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/recap.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
