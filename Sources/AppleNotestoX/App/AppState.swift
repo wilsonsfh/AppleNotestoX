@@ -32,14 +32,22 @@ final class AppState {
     var archiveProgress: [NoteArchiveProgress] = []
     var isArchiving = false
 
+    // Wiki export
+    enum ExportDestination: String, Sendable { case notion, wiki }
+    var exportDestination: ExportDestination = .notion
+    var vaultURL: URL? = nil
+    var wikiProgress: [WikiExportProgress] = []
+
     // Services
     let notes: AppleNotesService
     let notion: NotionService
     let images: ImagePipeline
     let log: ArchiveLog
     let coordinator: ArchiveCoordinator
+    let wikiCoordinator: WikiExportCoordinator
 
     private let keychain = Keychain(service: "com.applenotestox.app")
+    private let vaultBookmarkKey = "wiki_vault_bookmark"
 
     init() {
         let n = NotionService()
@@ -51,6 +59,8 @@ final class AppState {
         self.log = l
         self.images = i
         self.coordinator = ArchiveCoordinator(notes: a, notion: n, images: i, log: l)
+        self.wikiCoordinator = WikiExportCoordinator(notes: a)
+        restoreVaultBookmark()
     }
 
     // MARK: - Bootstrap
@@ -171,6 +181,54 @@ final class AppState {
     private func refreshArchivedSet() async {
         let entries = await log.allEntries()
         archivedNoteIDs = Set(entries.map(\.appleNoteID))
+    }
+
+    // MARK: - Wiki export
+
+    /// Records the chosen vault directory and persists a (security-scoped if possible)
+    /// bookmark so it survives relaunches.
+    func chooseVault(_ url: URL) {
+        vaultURL = url
+        if let data = try? url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) {
+            UserDefaults.standard.set(data, forKey: vaultBookmarkKey)
+        } else if let data = try? url.bookmarkData() {
+            UserDefaults.standard.set(data, forKey: vaultBookmarkKey)
+        }
+    }
+
+    func restoreVaultBookmark() {
+        guard let data = UserDefaults.standard.data(forKey: vaultBookmarkKey) else { return }
+        var stale = false
+        if let url = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) {
+            vaultURL = url
+        } else if let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) {
+            vaultURL = url
+        }
+    }
+
+    func runWikiExport() async {
+        guard let vault = vaultURL, !selectedNoteIDs.isEmpty, let h = hierarchy else { return }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+
+        let job = WikiExportJob(noteIDs: Array(selectedNoteIDs), config: WikiVaultConfig(vaultURL: vault))
+        isArchiving = true
+        wikiProgress = []
+        let stream = wikiCoordinator.export(job: job, hierarchy: h)
+        for await snapshot in stream {
+            wikiProgress = snapshot
+        }
+        isArchiving = false
+        selectedNoteIDs.removeAll()
     }
 }
 
