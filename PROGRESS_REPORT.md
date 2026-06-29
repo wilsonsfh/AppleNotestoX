@@ -10,32 +10,35 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |
 | **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
 | **P2: video as a source (transcribe + keyframes → raw/)** | 🟡 code complete + build green + pure logic run-verified + Info.plist section verified; **pending real-video runtime test (Speech permission) under Xcode** |
-| P3: multi-modal review/study layer | 🟡 **design done (spec+plan+mockup, Direction B), implementation PAUSED** — resume at generator + web app (branch `feat/review-layer`) |
-
-## In progress (PAUSED — resume here)
-
-### 2026-06-29 — P3: Multi-modal review/study layer (design done, build paused)
-- **State:** Branch `feat/review-layer`. Design **complete and committed** (`ffb1bed`):
-  spec `docs/superpowers/specs/2026-06-29-review-layer-design.md`, plan
-  `docs/superpowers/plans/2026-06-29-review-layer.md`, comparison mockup
-  `review/mockups/compare.html` (open it — **Direction B "Crisp Product" chosen**).
-- **Fact-checked (sources in research):** Web Speech API TTS works from `file://` via
-  `<script>`-global data (not `fetch`), robust `voiceschanged` voice load, Safari needs a
-  user gesture; Obsidian SR card syntax (`::`, `:::`, `?`, `??`, `#flashcards`) + exact SM-2
-  formulas; dependency-free force-directed graph; Node regex frontmatter/wikilink parsing.
-  **Node v26 is available**, so the generator can be run + verified here.
-- **RESUME AT — implement the plan's tasks, in order:**
-  1. `review/generate.mjs` (vault `wiki/` → `window.STUDY_DATA`); run on
-     `~/Projects/Personal_LLM_Wiki` to verify counts.
-  2. `review/js/srs.js` (SM-2 + localStorage) — headless `node` check.
-  3. `review/js/tts.js`, `review/js/data.js`.
-  4. `review/js/flashcards.js`, `graph.js`, `recap.js`.
-  5. `review/index.html`, `review/styles.css` (Direction B tokens, dark + light), `review/js/app.js` (hash router + Today dashboard).
-  6. `review/study-data.sample.js` (committed demo data); gitignore `review/study-data.js`.
-  7. Verify (`node --check` all js; generator run), commit atomically, update this report, merge to `main`.
-- **No app code written yet** — only design artifacts are committed. Nothing is half-written/broken.
+| **P3: multi-modal review/study layer** | 🟡 code complete + all JS parses + generator/SM-2/data-layer run-verified; **pending browser runtime test (UI + TTS)** |
 
 ## Completed
+
+### 2026-06-29 — P3: Multi-modal review/study layer (flashcards + map + recap)
+- **What:** A dependency-free, no-build static web app (`review/`) + Node generator that
+  turns the wiki into an active study experience: **flashcards with SM-2 spaced repetition**
+  (localStorage history + streak), a **force-directed concept map** (canvas) with a detail
+  panel, and **narrated recaps** (Web Speech TTS auto-advancing slides). Dark + light themes,
+  `prefers-reduced-motion`, keyboard review loop, Direction-B design (`mockups/compare.html`).
+- **Files (new):** `review/generate.mjs`, `review/index.html`, `review/styles.css`,
+  `review/study-data.sample.js`, `review/README.md`, and `review/js/`:
+  `ui.js`, `data.js`, `srs.js`, `tts.js`, `flashcards.js`, `graph.js`, `recap.js`, `app.js`.
+  `.gitignore` ignores generated `review/study-data.js`.
+- **Branch:** `feat/review-layer`. **Commits:** `ffb1bed` (design), `361658e`, `874a195`,
+  `f169c2d`, `1bc87b6`, `4b36ee4`, `b414826` (+ this report).
+- **Design tools:** Figma MCP / Mobbin / MagicPath / MagicPatterns are paid and **not
+  connected** in this environment → applied `frontend-design` principles directly,
+  benchmarked to Airfoil/Linear/Stripe. Not a Cloudflare app, so Kumo not used.
+- **Verification:** `node --check` on all 10 JS files ✅; generator run on real
+  `Personal_LLM_Wiki` → 15 concepts / 15 cards / 58 edges / 0 orphans ✅; SM-2 engine
+  (math + EF floor + lapse reset + persistence + streak) run-verified via `node`/`vm` ✅;
+  data-layer integration with the sample (indexing, neighbors, edge/card integrity,
+  partition) run-verified ✅.
+- **Remaining gates (browser, test machine):** open `review/index.html` (or `python3 -m
+  http.server -d review`) — run a flashcard session, explore the map, play a recap (TTS
+  needs a click to start, esp. Safari). Then `node review/generate.mjs --vault <vault>`
+  to study your real wiki.
+- **Out of scope (later):** multi-device SR sync, in-app card authoring, real video export.
 
 ### 2026-06-29 — P2: Video as a source (on-device transcription + keyframes)
 - **What:** Import a video file (or transcribe video attachments inside an Apple Note)
