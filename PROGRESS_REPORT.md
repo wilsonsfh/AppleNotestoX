@@ -10,7 +10,30 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |
 | **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
 | **P2: video as a source (transcribe + keyframes → raw/)** | 🟡 code complete + build green + pure logic run-verified + Info.plist section verified; **pending real-video runtime test (Speech permission) under Xcode** |
-| P3: multi-modal review/study layer | ⬜ not started |
+| P3: multi-modal review/study layer | 🟡 **design done (spec+plan+mockup, Direction B), implementation PAUSED** — resume at generator + web app (branch `feat/review-layer`) |
+
+## In progress (PAUSED — resume here)
+
+### 2026-06-29 — P3: Multi-modal review/study layer (design done, build paused)
+- **State:** Branch `feat/review-layer`. Design **complete and committed** (`ffb1bed`):
+  spec `docs/superpowers/specs/2026-06-29-review-layer-design.md`, plan
+  `docs/superpowers/plans/2026-06-29-review-layer.md`, comparison mockup
+  `review/mockups/compare.html` (open it — **Direction B "Crisp Product" chosen**).
+- **Fact-checked (sources in research):** Web Speech API TTS works from `file://` via
+  `<script>`-global data (not `fetch`), robust `voiceschanged` voice load, Safari needs a
+  user gesture; Obsidian SR card syntax (`::`, `:::`, `?`, `??`, `#flashcards`) + exact SM-2
+  formulas; dependency-free force-directed graph; Node regex frontmatter/wikilink parsing.
+  **Node v26 is available**, so the generator can be run + verified here.
+- **RESUME AT — implement the plan's tasks, in order:**
+  1. `review/generate.mjs` (vault `wiki/` → `window.STUDY_DATA`); run on
+     `~/Projects/Personal_LLM_Wiki` to verify counts.
+  2. `review/js/srs.js` (SM-2 + localStorage) — headless `node` check.
+  3. `review/js/tts.js`, `review/js/data.js`.
+  4. `review/js/flashcards.js`, `graph.js`, `recap.js`.
+  5. `review/index.html`, `review/styles.css` (Direction B tokens, dark + light), `review/js/app.js` (hash router + Today dashboard).
+  6. `review/study-data.sample.js` (committed demo data); gitignore `review/study-data.js`.
+  7. Verify (`node --check` all js; generator run), commit atomically, update this report, merge to `main`.
+- **No app code written yet** — only design artifacts are committed. Nothing is half-written/broken.
 
 ## Completed
 
