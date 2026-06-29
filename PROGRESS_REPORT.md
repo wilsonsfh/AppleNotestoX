@@ -11,8 +11,28 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
 | **P2: video as a source (transcribe + keyframes → raw/)** | 🟡 code complete + build green + pure logic run-verified + Info.plist section verified; **pending real-video runtime test (Speech permission) under Xcode** |
 | **P3: multi-modal review/study layer** | 🟡 code complete + all JS parses + generator/SM-2/data-layer run-verified; **pending browser runtime test (UI + TTS)** |
+| **Notion → wiki importer (`tools/notion-import.mjs`)** | 🟡 pure blocks→markdown converter run-verified (12 checks) + `--help` ok; **live Notion API path NOT fact-checked (per request) — verify on first run with your token** |
 
 ## Completed
+
+### 2026-06-29 — Notion → wiki importer (`tools/notion-import.mjs`)
+- **What:** One-command Node importer (no Xcode) that pulls Notion pages into the vault's
+  `raw/journal/` as provenance-stamped markdown + downloaded images in `raw/assets/`, so
+  opencode can ingest them — the "intuitive Notion path" (parallels the Apple Notes export).
+- **UX:** token resolves from `--token` → `$NOTION_TOKEN` → the **AppleNotestoX app's
+  Keychain entry** → prompt; lists accessible pages and lets you pick interactively
+  (`1,3` or `all`), or `--page`/`--all`/`--list`.
+- **Converter:** Notion blocks → markdown (headings, nested lists, to-dos, quote, callout,
+  code, image, divider, bookmark, table rows) with rich-text annotations + links.
+- **Files:** `tools/notion-import.mjs`. **Branch:** `feat/notion-import`.
+- **Verification:** `node --check` ✅; `--help` dry-run ✅; pure converter + `richTextToMd`
+  + `pageTitle` + nesting/image/order — 12 assertions run-verified via harness ✅.
+- **Important caveat:** the **live Notion API calls** (`/search`, `/blocks/*/children`,
+  image download) were built from stable API knowledge (`Notion-Version: 2022-06-28`) and
+  **NOT live-fact-checked** (per request). Verify on first run: create an integration at
+  notion.so/my-integrations, share pages with it, then
+  `node tools/notion-import.mjs --vault ~/Projects/Personal_LLM_Wiki`.
+- **Out of scope:** databases/sub-page recursion beyond shared pages, Notion-export-zip path.
 
 ### 2026-06-29 — P3: Multi-modal review/study layer (flashcards + map + recap)
 - **What:** A dependency-free, no-build static web app (`review/`) + Node generator that
