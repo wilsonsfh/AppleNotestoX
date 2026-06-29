@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>AppleNotestoX</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.applenotestox.app</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>AppleNotestoX transcribes the videos you choose into your knowledge wiki, on-device.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AppleNotestoX reads your Apple Notes so it can export them into your knowledge wiki.</string>
+</dict>
+</plist>
