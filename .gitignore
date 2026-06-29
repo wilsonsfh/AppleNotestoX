@@ -4,3 +4,6 @@ build/
 *.xcodeproj/
 DerivedData/
 .DS_Store
+
+# Generated from a vault by review/generate.mjs (personal content)
+review/study-data.js
