@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiki Studio — Before / After mockups</title>
+<style>
+  :root{
+    --bg:#0d0e12; --surface:#15161c; --surface-2:#1b1d25; --elev:#20222e;
+    --border:#262833; --border-2:#343748;
+    --text:#e8e8ec; --muted:#a0a0ad; --faint:#6b6c79;
+    --accent:#5b6cff; --accent-2:#8b7bff; --ink:#fff;
+    --good:#46b98a; --warn:#e0a13a; --danger:#e0556b;
+    --c-entity:#3fb37f; --c-project:#e0a13a; --c-source:#9a6bff;
+    --r:14px; --r-sm:10px; --r-xs:8px;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 18px 40px rgba(0,0,0,.45);
+    --maxw:1280px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;padding:32px 20px 80px}
+  h1,h2,h3{line-height:1.14;letter-spacing:-.02em;font-weight:680}
+  .wrap{max-width:var(--maxw);margin:0 auto}
+  .eyebrow{color:var(--accent-2);font-weight:700;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase}
+  .lede{color:var(--muted);max-width:70ch;margin-top:8px}
+  .muted{color:var(--muted)} .faint{color:var(--faint);font-size:.85rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.84em;background:var(--surface-2);
+    border:1px solid var(--border);padding:.1em .4em;border-radius:6px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;
+    padding:3px 9px;border-radius:999px;border:1px solid var(--border-2)}
+  .pill.before{color:#cfd0da;background:#1a1b22}
+  .pill.after{color:var(--ink);background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:26px}
+  @media (max-width:1080px){.grid{grid-template-columns:1fr}}
+  .col h2{font-size:1.05rem;margin:10px 2px}
+  .col .sub{font-size:.85rem;color:var(--faint);margin:0 2px 12px}
+
+  /* faux mac window */
+  .win{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+  .titlebar{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#101117;border-bottom:1px solid var(--border)}
+  .lights{display:flex;gap:7px}
+  .lights i{width:11px;height:11px;border-radius:50%;display:block}
+  .lights .r{background:#ff5f57}.lights .y{background:#febc2e}.lights .g{background:#28c840}
+  .wtitle{font-size:.8rem;color:var(--muted);font-weight:600}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+  .spacer{flex:1}
+  .btn{font-size:.8rem;font-weight:600;border-radius:var(--r-xs);padding:6px 11px;border:1px solid var(--border-2);
+    background:var(--elev);color:var(--text);cursor:default;white-space:nowrap}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent;color:#fff}
+  .btn.ghost{background:transparent}
+  .btn.sm{font-size:.74rem;padding:4px 8px}
+  .btn[disabled]{opacity:.45}
+  .seg{display:inline-flex;border:1px solid var(--border-2);border-radius:var(--r-xs);overflow:hidden}
+  .seg span{padding:5px 12px;font-size:.78rem;font-weight:600;color:var(--muted)}
+  .seg span.on{background:var(--elev);color:var(--text)}
+
+  /* split layout (before) */
+  .split{display:grid;grid-template-columns:200px 1fr;min-height:340px}
+  .pane{padding:10px 12px}
+  .pane.side{border-right:1px solid var(--border);background:#121319}
+  .ph{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:4px 2px 8px}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;font-size:.82rem}
+  .row:hover{background:#171922}
+  .chk{width:13px;height:13px;border:1.5px solid var(--faint);border-radius:4px;flex:none}
+  .chk.on{background:var(--accent);border-color:var(--accent)}
+  .ico{width:15px;text-align:center;color:var(--muted)}
+  .count{margin-left:auto;color:var(--faint);font-size:.72rem}
+  .field{font-size:.82rem;color:var(--muted);border:1px dashed var(--border-2);border-radius:8px;padding:9px 11px;margin:6px 0}
+  .note{font-size:.74rem;color:var(--faint)}
+
+  /* hub layout (after) */
+  .hub{display:grid;grid-template-columns:52px 1fr;min-height:340px}
+  .rail{border-right:1px solid var(--border);background:#101117;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0}
+  .rail b{font-size:1.05rem;line-height:1;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px}
+  .rico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--muted);font-size:1rem}
+  .rico.on{background:var(--elev);color:var(--text);box-shadow:inset 0 0 0 1px var(--border-2)}
+  .hub-main{padding:12px 14px;display:flex;flex-direction:column;gap:11px;overflow:auto}
+  .vaultbar{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+  .stage{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px}
+  .stage h3{font-size:.92rem;display:flex;align-items:center;gap:8px}
+  .stage .k{font-size:.68rem;color:var(--faint);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+  .stat{display:flex;gap:16px;margin:8px 0}
+  .stat div{display:flex;flex-direction:column}
+  .stat b{font-size:1.45rem;letter-spacing:-.02em}
+  .stat small{color:var(--faint);font-size:.72rem}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;padding:5px 9px;border-radius:999px;
+    background:var(--elev);border:1px solid var(--border-2);color:var(--text)}
+  .chip .d{width:7px;height:7px;border-radius:50%}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .badge{font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 22%,transparent);
+    color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
+  .mini{font-size:.78rem;color:var(--muted);border-top:1px dashed var(--border-2);margin-top:8px;padding-top:8px}
+  .mini code{font-size:.72rem}
+
+  /* annotation pins */
+  .pin{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:.7rem;font-weight:800;
+    background:var(--accent);color:#fff;vertical-align:middle;margin-left:6px}
+
+  /* sections */
+  .section{margin-top:40px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--faint);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  td.b{color:var(--muted)} td.a{color:var(--text)}
+  .opt{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:780px){.opt{grid-template-columns:repeat(3,1fr)}}
+  .opt .o{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px}
+  .opt .o h4{font-size:.92rem;margin-bottom:6px}
+  .tag{font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:8px}
+  .tag.mvp{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
+  .tag.full{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-2)}
+  .tag.no{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger)}
+  ul{margin:6px 0 0 18px} li{margin:3px 0;color:var(--muted);font-size:.85rem}
+  .steps{counter-reset:s;list-style:none;margin:0;padding:0}
+  .steps li{counter-increment:s;position:relative;padding:10px 0 10px 40px;border-bottom:1px solid var(--border);color:var(--text)}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:9px;width:26px;height:26px;border-radius:8px;
+    display:grid;place-items:center;font-weight:800;font-size:.8rem;background:var(--elev);border:1px solid var(--border-2)}
+  .steps li small{color:var(--faint);font-weight:500}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;color:var(--muted)}
+  .legend .pin{position:static}
+  .q{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 10%,transparent),transparent);
+    border:1px solid var(--border-2)}
+  .q ol{margin:8px 0 0 20px}.q li{color:var(--text);margin:7px 0}
+  .foot{margin-top:30px;color:var(--faint);font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">AppleNotestoX · brainstorming mock — not built yet</div>
+  <h1>From “Notes&nbsp;→&nbsp;Notion exporter” to <span style="background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent">Wiki Studio</span></h1>
+  <p class="lede">A side-by-side of the current app vs a proposed reframe where your <code>Personal_LLM_Wiki</code> is the
+  center of gravity — capture into <code>raw/</code>, see what’s not yet synthesized, then study the <code>wiki/</code>.
+  Numbers are pulled from your real vault today.</p>
+
+  <div class="legend">
+    <span><span class="pin">1</span> Refresh / regenerate study data</span>
+    <span><span class="pin">2</span> Launch the study app</span>
+    <span><span class="pin">3</span> Capture new material (buttons)</span>
+    <span><span class="pin">4</span> “In raw, not yet in wiki” backlog</span>
+    <span><span class="pin">5</span> X bookmarks → wiki</span>
+  </div>
+
+  <div class="grid">
+    <!-- BEFORE -->
+    <div class="col">
+      <span class="pill before">● BEFORE — today</span>
+      <h2>AppleNotestoX (export tool)</h2>
+      <p class="sub">Identity: move Apple Notes → Notion or → wiki. The wiki is a write-only <em>destination</em>; no study, no refresh, no backlog, no X.</p>
+      <div class="win">
+        <div class="titlebar"><div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div><div class="wtitle">AppleNotestoX</div></div>
+        <div class="toolbar">
+          <span class="faint" style="font-size:.74rem">Reading Apple Notes…</span>
+          <div class="spacer"></div>
+          <span class="btn sm ghost">⟳</span><span class="btn sm ghost">⚙</span>
+          <span class="btn sm primary">Export to wiki</span>
+        </div>
+        <div class="split">
+          <div class="pane side">
+            <div class="ph">Apple Notes</div>
+            <div class="row"><span class="ico">▸</span><span class="ico">📁</span> Notes <span class="count">12</span></div>
+            <div class="row"><span class="chk on"></span><span class="ico">📄</span> Glints Journal</div>
+            <div class="row"><span class="chk"></span><span class="ico">📄</span> Travel expenses</div>
+            <div class="row"><span class="chk"></span><span class="ico">📄</span> Learning notes</div>
+            <div class="row"><span class="ico">▸</span><span class="ico">📁</span> Work <span class="count">7</span></div>
+          </div>
+          <div class="pane">
+            <div class="seg"><span>Notion</span><span class="on">Wiki</span></div>
+            <div class="field" style="margin-top:10px">Vault folder<br><span class="faint">~/Projects/Personal_LLM_Wiki</span></div>
+            <div class="field">Choose vault…</div>
+            <div class="note">Notes export to <code>raw/journal/</code> with screenshots in <code>raw/assets/</code>. Then ask opencode to ingest.</div>
+            <div class="field" style="margin-top:10px">☐ Transcribe video attachments &nbsp;·&nbsp; Import video…</div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:10px">Pain: the app ends at “wrote files to raw/”. Refresh-study, the synthesis backlog, and studying all live elsewhere (terminal + browser) — so the wiki never feels like the hub.</p>
+    </div>
+
+    <!-- AFTER -->
+    <div class="col">
+      <span class="pill after">✦ AFTER — proposed</span>
+      <h2>Wiki Studio</h2>
+      <p class="sub">Identity: <strong>capture → synthesize → study</strong>, mirroring the vault’s own three layers (<code>raw/ → wiki/ → review</code>). Notion/Apple Notes/X are just capture sources.</p>
+      <div class="win">
+        <div class="titlebar"><div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div><div class="wtitle">Wiki Studio — Personal_LLM_Wiki</div></div>
+        <div class="hub">
+          <div class="rail">
+            <b>◧</b>
+            <div class="rico on" title="Home">⌂</div>
+            <div class="rico" title="Capture">＋</div>
+            <div class="rico" title="Synthesize">⟲</div>
+            <div class="rico" title="Study">◎</div>
+            <div class="rico" title="Browse vault">📚</div>
+          </div>
+          <div class="hub-main">
+            <div class="vaultbar"><span class="dot"></span> Personal_LLM_Wiki <span class="faint">· study data refreshed 2m ago</span></div>
+
+            <!-- CAPTURE -->
+            <div class="stage">
+              <div class="k">1 · Capture → raw/</div>
+              <h3>Bring material in <span class="pin">3</span></h3>
+              <div class="chips">
+                <span class="chip"><span class="d" style="background:#f5c518"></span>Apple Notes</span>
+                <span class="chip"><span class="d" style="background:#e0556b"></span>Video</span>
+                <span class="chip"><span class="d" style="background:#fff"></span>Notion</span>
+                <span class="chip"><span class="d" style="background:var(--accent)"></span>X bookmarks <span class="pin">5</span></span>
+                <span class="chip"><span class="d" style="background:var(--muted)"></span>Paste URL</span>
+              </div>
+              <div class="acts"><span class="btn primary sm">＋ Capture ▾</span><span class="btn ghost sm">Select Apple Notes…</span></div>
+            </div>
+
+            <!-- SYNTHESIZE -->
+            <div class="stage">
+              <div class="k">2 · Synthesize raw/ → wiki/</div>
+              <h3>Awaiting synthesis <span class="badge">12 pending</span> <span class="pin">4</span></h3>
+              <div class="mini" style="border-top:none;margin-top:6px;padding-top:0">
+                <div class="row" style="padding:3px 0"><span class="ico">📓</span> 2026-06-30 · current-mindset-elaboration</div>
+                <div class="row" style="padding:3px 0"><span class="ico">📓</span> 2026-06-30 · sup-hackathon-ops-and-product</div>
+                <div class="row" style="padding:3px 0"><span class="ico">📓</span> 2026-06-26 · se-best-practices <span class="count">+ 9 more</span></div>
+              </div>
+              <div class="acts"><span class="btn sm">Review backlog</span><span class="btn ghost sm">Copy opencode prompt</span></div>
+              <div class="mini">Synthesis stays LLM-owned (opencode). The app only <em>surfaces</em> the backlog and hands off — it never invents wiki facts. <span class="faint">raw/text: 98 · reference: 11 · articles: 2</span></div>
+            </div>
+
+            <!-- STUDY -->
+            <div class="stage">
+              <div class="k">3 · Study wiki/</div>
+              <h3>Your knowledge <span class="pin">1</span> <span class="pin">2</span></h3>
+              <div class="stat">
+                <div><b>55</b><small>concepts</small></div>
+                <div><b>96</b><small>cards</small></div>
+                <div><b style="color:var(--warn)">18</b><small>due today</small></div>
+              </div>
+              <div class="acts">
+                <span class="btn primary sm">↻ Refresh study data</span>
+                <span class="btn sm">◎ Launch Wiki Review</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:10px">One window answers “what did I capture, what still needs synthesis, and what should I study?” — without leaving the app.</p>
+    </div>
+  </div>
+
+  <!-- TRADEOFFS -->
+  <div class="section">
+    <h2>UI/UX trade-offs</h2>
+    <div class="card">
+      <table>
+        <tr><th>Dimension</th><th>Before</th><th>After (Wiki Studio)</th></tr>
+        <tr><td>Mental model</td><td class="b">“Exporter”: Apple Notes is the subject, wiki is one output.</td><td class="a">“Studio”: the wiki is the subject; sources feed it. Matches how you actually think about it.</td></tr>
+        <tr><td>Study loop</td><td class="b">Lives in terminal (<code>generate.mjs</code>) + browser. Easy to forget; data goes stale (yours was 1 day old).</td><td class="a">One-click refresh + launch in-app. Trade-off: app now depends on Node being installed.</td></tr>
+        <tr><td>Synthesis visibility</td><td class="b">Invisible. You can’t tell what’s in <code>raw/</code> but not in <code>wiki/</code>.</td><td class="a">A live backlog (12 today). Trade-off: needs a “synthesized?” heuristic that can be wrong at the edges.</td></tr>
+        <tr><td>Cognitive load</td><td class="b">Low surface, but forces context-switching across 3 tools.</td><td class="a">More on one screen. Risk of a “dashboard that does nothing”; mitigated by ≤3 stages + one primary action each.</td></tr>
+        <tr><td>Discoverability</td><td class="b">Video import hidden under the Wiki tab; Notion import is terminal-only; X impossible.</td><td class="a">All capture sources in one menu. Trade-off: a menu can hide depth — keep the top 2 as buttons.</td></tr>
+        <tr><td>Notion</td><td class="b">A co-equal destination (half the UI).</td><td class="a">Demoted to one capture source. Trade-off: if you still push to Notion, that flow gets less prominent.</td></tr>
+        <tr><td>Build cost / risk</td><td class="b">—</td><td class="a">Reframe is moderate SwiftUI work; X is the only large/external piece.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- X OPTIONS -->
+  <div class="section">
+    <h2>X bookmarks → wiki: 3 ways (pick one to start)</h2>
+    <p class="muted faint">Endpoint is <code>GET /2/users/{id}/bookmarks</code> (OAuth2 user-context, scopes <code>bookmark.read tweet.read users.read</code>). An “X MCP” just wraps this — it does <em>not</em> avoid the App + auth + paid tier.</p>
+    <div class="opt">
+      <div class="o">
+        <span class="tag mvp">MVP · recommended first</span>
+        <h4>Paste / share a tweet URL</h4>
+        <ul>
+          <li>You paste one or more x.com links; app fetches public oEmbed/syndication text + author.</li>
+          <li>Writes <code>raw/articles/&lt;date&gt;-x-&lt;handle&gt;.md</code> with provenance.</li>
+          <li><b>No API key, no cost, no OAuth.</b> Manual, not bulk.</li>
+        </ul>
+      </div>
+      <div class="o">
+        <span class="tag full">Full · later</span>
+        <h4>Official bookmarks sync</h4>
+        <ul>
+          <li>Create an X developer App, OAuth2 PKCE login once, store refresh token in Keychain.</li>
+          <li>Pull all bookmarks (paginated) → <code>raw/</code>, dedupe on tweet id.</li>
+          <li><b>Needs a paid X tier</b> (Basic+) and token refresh. Bulk + repeatable.</li>
+        </ul>
+      </div>
+      <div class="o">
+        <span class="tag no">Avoid</span>
+        <h4>Scrape / session cookies</h4>
+        <ul>
+          <li>Drive a logged-in browser session to read the bookmarks page.</li>
+          <li>Brittle, breaks often, and against X ToS.</li>
+          <li>Only mentioned so we can explicitly rule it out.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- DECOMPOSITION -->
+  <div class="section">
+    <h2>This is ~5 features — suggested build order</h2>
+    <p class="muted">Each is its own small spec → plan → implement. Ordered by value-per-effort and dependencies, so you get wins fast and the risky/paid piece is last.</p>
+    <div class="card">
+      <ol class="steps">
+        <li><b>Study core</b> — “↻ Refresh study data” (runs <code>generate.mjs</code>) + “◎ Launch Wiki Review” + live counts. <small>Smallest, highest daily value; all local. Fixes the “stale data” problem permanently.</small></li>
+        <li><b>Synthesis backlog</b> — compute & list <code>raw/</code> items with no <code>wiki/sources/</code> page; “Copy opencode prompt”. <small>Local; turns the invisible into a to-do list (12 today).</small></li>
+        <li><b>Wiki Studio shell</b> — reframe the window into the 3-stage hub; demote Notion to a capture source. <small>Moderate SwiftUI; wraps #1–2.</small></li>
+        <li><b>Capture menu</b> — unify existing importers (Apple Notes export, Video, Notion) behind “＋ Capture”. <small>Mostly wiring what already exists.</small></li>
+        <li><b>X bookmarks</b> — ship the <em>paste-URL MVP</em> first; gate full OAuth sync on whether you’ll pay for an X tier. <small>Largest, external, optional cost.</small></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- QUESTIONS -->
+  <div class="section">
+    <div class="card q">
+      <h2>Before I write the spec — a few decisions</h2>
+      <ol>
+        <li><b>Scope to start:</b> ship #1+#2 first (study + backlog, ~1 focused pass), or do the full Wiki-Studio reframe (#1–#4) in one go?</li>
+        <li><b>X path:</b> start with the no-cost <em>paste-URL</em> MVP, or do you already have (or will pay for) an X developer tier so we build the real bookmarks sync?</li>
+        <li><b>Notion:</b> keep it as a capture source, or drop it from the GUI entirely (it stays a CLI tool)?</li>
+        <li><b>“Synthesize” button behaviour:</b> the app can’t safely write <code>wiki/</code> itself (that’s LLM-owned). OK if it just surfaces the backlog + copies an opencode prompt for you to run? Or do you want it to shell out to <code>opencode</code> directly?</li>
+        <li><b>“Synthesized?” signal:</b> is “a <code>wiki/sources/&lt;same-name&gt;.md</code> exists” good enough, or should it also grep the wiki for references / a frontmatter flag (more accurate, more work)?</li>
+      </ol>
+    </div>
+  </div>
+
+  <p class="foot">Mock file: <code>docs/mockups/2026-06-30-wiki-studio-before-after.html</code> · dark theme uses the review app’s Direction-B tokens · nothing here is implemented yet.</p>
+</div>
+</body>
+</html>
