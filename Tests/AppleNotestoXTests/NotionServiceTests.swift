@@ -136,8 +136,10 @@ final class NotionServiceTests: XCTestCase {
 // MARK: - URL mock
 
 final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var handler: ((URLRequest) -> (HTTPURLResponse, Data))?
-    static var captured: [URLRequest] = []
+    // Accessed only from URLProtocol callbacks during serial test runs; the class is
+    // already `@unchecked Sendable`, so opt out of Swift 6 global-state checking here.
+    nonisolated(unsafe) static var handler: ((URLRequest) -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var captured: [URLRequest] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
