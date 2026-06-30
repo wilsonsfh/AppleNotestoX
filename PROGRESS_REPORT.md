@@ -7,6 +7,7 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 
 | Capability | Status |
 |---|---|
+| **Bugfix: Apple Notes reader launch-deadlock (osascript pipe drain) + faster date parse** | ✅ shipped to `main` (`2898d3a`); `swift build` green + run-verified (deadlock repro/fix + parser equivalence); XCTest committed (run under Xcode) |
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |
 | **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
 | **P2: video as a source (transcribe + keyframes → raw/)** | 🟡 code complete + build green + pure logic run-verified + Info.plist section verified; **pending real-video runtime test (Speech permission) under Xcode** |
@@ -14,6 +15,32 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | **Notion → wiki importer (`tools/notion-import.mjs`)** | 🟡 pure blocks→markdown converter run-verified (12 checks) + `--help` ok; **live Notion API path NOT fact-checked (per request) — verify on first run with your token** |
 
 ## Completed
+
+### 2026-06-30 — Bugfix: Apple Notes reader launch-deadlock + faster date parse
+- **Symptom (reported):** the Swift app "hangs" and the **Wiki tab "has nothing"**. Root-caused
+  to a single defect: `AppleNotesService.runScript()` called `Process.waitUntilExit()` **before**
+  draining the stdout pipe. Once osascript's output exceeded the ~64 KB OS pipe buffer (any
+  non-trivial Notes library), the child blocked writing into a full pipe while the app blocked
+  waiting for it to exit → **deadlock at launch**. With the hierarchy never loading, no notes were
+  selectable, so the Wiki tab had nothing to export (and "Export to wiki" stayed disabled).
+- **Diagnosis evidence:** launched the built binary and `sample`d it — a worker thread parked at
+  `AppleNotesService.swift:59` (`waitUntilExit`) with a live `osascript` child; an isolated
+  `swift` harness confirmed the exact pattern deadlocks at 300 KB and completes when drained first.
+- **Fix:** extracted a testable `runProcess(executableURL:arguments:)` that **drains stdout +
+  stderr concurrently** (stderr on a worker thread via a lock-guarded `DataBox`), then waits.
+  `runScript()` is now a thin wrapper preserving the osascript args + error mapping
+  (`permissionDenied` / `scriptFailed`).
+- **Also:** replaced the per-note `DateFormatter` (ICU, visibly CPU-heavy in the sample) in
+  `parseHierarchy` with a fast hand-rolled `parseNoteDate()` + cached gregorian calendar.
+- **Files (modified):** `Services/AppleNotesService.swift`. **Files (new tests):**
+  `Tests/AppleNotestoXTests/ProcessRunnerTests.swift`, `Tests/AppleNotestoXTests/NoteDateParseTests.swift`.
+- **Branch:** `main`. **Commit:** `2898d3a` (pushed to `origin/main`).
+- **Verification:** `swift build` ✅ exit 0; shipped `runProcess` algorithm run-verified via
+  standalone harness (512 KB stdout → no deadlock, stderr+nonzero status captured, plain stdout) ✅;
+  `parseNoteDate` run-verified equivalent to `DateFormatter` across samples + rejects malformed ✅.
+- **Remaining gate:** XCTest can't run in this environment (Command Line Tools only, no Xcode →
+  `swift test` reports "no such module 'XCTest'"). Run the two committed suites under **Xcode/CI**:
+  `swift test --filter ProcessRunnerTests` and `swift test --filter NoteDateParseTests`.
 
 ### 2026-06-29 — Notion → wiki importer (`tools/notion-import.mjs`)
 - **What:** One-command Node importer (no Xcode) that pulls Notion pages into the vault's
