@@ -1,5 +1,13 @@
 import Foundation
 
+/// Thread-safe holder so a value read on one queue can be handed back to another.
+private final class DataBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = Data()
+    func set(_ d: Data) { lock.lock(); value = d; lock.unlock() }
+    func get() -> Data { lock.lock(); defer { lock.unlock() }; return value }
+}
+
 actor AppleNotesService {
     enum AppleNotesError: Error, LocalizedError {
         case scriptFailed(String)
@@ -39,53 +47,101 @@ actor AppleNotesService {
 
     // MARK: - Process
 
-    private func runScript(_ source: String, args: [String] = []) async throws -> String {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+    /// Result of running a child process: captured stdout/stderr plus exit status.
+    struct ProcessResult: Sendable {
+        let stdout: String
+        let stderr: String
+        let status: Int32
+    }
+
+    /// Runs a child process and returns its captured output. No Notes/TCC dependency,
+    /// so it is unit-testable in isolation.
+    static func runProcess(executableURL: URL, arguments: [String]) async throws -> ProcessResult {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<ProcessResult, Error>) in
             DispatchQueue.global(qos: .userInitiated).async {
                 let proc = Process()
-                proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                var procArgs = ["-e", source]
-                if !args.isEmpty {
-                    procArgs.append("--")
-                    procArgs.append(contentsOf: args)
-                }
-                proc.arguments = procArgs
+                proc.executableURL = executableURL
+                proc.arguments = arguments
 
                 let outPipe = Pipe()
                 let errPipe = Pipe()
                 proc.standardOutput = outPipe
                 proc.standardError = errPipe
                 do { try proc.run() } catch { cont.resume(throwing: error); return }
+
+                // Drain stdout and stderr *concurrently while the child runs*.
+                // Reading only after `waitUntilExit()` deadlocks once output exceeds
+                // the OS pipe buffer (~64 KB): the child blocks writing into a full
+                // pipe while we block waiting for it to exit. A Notes library's
+                // listing easily exceeds that, which froze the app at launch.
+                let errBox = DataBox()
+                let group = DispatchGroup()
+                group.enter()
+                DispatchQueue.global(qos: .userInitiated).async {
+                    errBox.set(errPipe.fileHandleForReading.readDataToEndOfFile())
+                    group.leave()
+                }
+                let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+                group.wait()
                 proc.waitUntilExit()
 
-                let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-                let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                 let out = String(data: outData, encoding: .utf8) ?? ""
-                let err = String(data: errData, encoding: .utf8) ?? ""
-
-                if proc.terminationStatus != 0 {
-                    if err.contains("(-1743)") || err.contains("Not authorized") || err.contains("not allowed") || err.contains("isn't allowed") {
-                        cont.resume(throwing: AppleNotesError.permissionDenied)
-                    } else {
-                        cont.resume(throwing: AppleNotesError.scriptFailed(err.isEmpty ? out : err))
-                    }
-                    return
-                }
-                cont.resume(returning: out)
+                let err = String(data: errBox.get(), encoding: .utf8) ?? ""
+                cont.resume(returning: ProcessResult(stdout: out, stderr: err, status: proc.terminationStatus))
             }
         }
     }
 
+    private func runScript(_ source: String, args: [String] = []) async throws -> String {
+        var procArgs = ["-e", source]
+        if !args.isEmpty {
+            procArgs.append("--")
+            procArgs.append(contentsOf: args)
+        }
+        let result = try await Self.runProcess(
+            executableURL: URL(fileURLWithPath: "/usr/bin/osascript"),
+            arguments: procArgs
+        )
+        if result.status != 0 {
+            let err = result.stderr
+            if err.contains("(-1743)") || err.contains("Not authorized") || err.contains("not allowed") || err.contains("isn't allowed") {
+                throw AppleNotesError.permissionDenied
+            }
+            throw AppleNotesError.scriptFailed(err.isEmpty ? result.stdout : err)
+        }
+        return result.stdout
+    }
+
     // MARK: - Parsers
+
+    private static let noteDateCalendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = .current
+        return c
+    }()
+
+    /// Fast parser for the local-time `"yyyy-MM-dd'T'HH:mm:ss"` timestamps emitted by
+    /// `listScript`. Avoids per-note `DateFormatter`/ICU parsing, which dominated CPU
+    /// while reading large Notes libraries. Returns nil for structurally invalid input.
+    static func parseNoteDate(_ s: String) -> Date? {
+        let halves = s.split(separator: "T", omittingEmptySubsequences: false)
+        guard halves.count == 2 else { return nil }
+        let d = halves[0].split(separator: "-", omittingEmptySubsequences: false)
+        let t = halves[1].split(separator: ":", omittingEmptySubsequences: false)
+        guard d.count == 3, t.count == 3,
+              let year = Int(d[0]), let month = Int(d[1]), let day = Int(d[2]),
+              let hour = Int(t[0]), let minute = Int(t[1]), let second = Int(t[2])
+        else { return nil }
+        var c = DateComponents()
+        c.year = year; c.month = month; c.day = day
+        c.hour = hour; c.minute = minute; c.second = second
+        return noteDateCalendar.date(from: c)
+    }
 
     static func parseHierarchy(_ raw: String) throws -> AppleNotesHierarchy {
         var folders: [String: AppleFolder] = [:]
         var notes: [String: AppleNote] = [:]
         var rootIDs: [String] = []
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        formatter.timeZone = .current
 
         for line in raw.split(separator: "\n", omittingEmptySubsequences: true) {
             let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
@@ -100,7 +156,7 @@ actor AppleNotesService {
                 if parent == nil { rootIDs.append(id) }
             } else if kind == "N", parts.count >= 5 {
                 let id = parts[1], name = parts[2], folderID = parts[3]
-                let date = formatter.date(from: parts[4]) ?? Date.distantPast
+                let date = Self.parseNoteDate(parts[4]) ?? Date.distantPast
                 notes[id] = AppleNote(id: id, name: name, folderID: folderID, modifiedAt: date)
                 folders[folderID]?.noteIDs.append(id)
             }
