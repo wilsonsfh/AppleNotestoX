@@ -7,6 +7,7 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 
 | Capability | Status |
 |---|---|
+| **Wiki Studio — Pass 1 (Study core + Synthesis backlog)** | ✅ shipped to `main` (`b75f665`…`8c413d7`); `swift build` green + logic run-verified (11 checks) + launch smoke (Study default, no crash); XCTest committed (run under Xcode). Spec/plan/mocks in `docs/`. |
 | **Bugfix: Apple Notes reader launch-deadlock (osascript pipe drain) + faster date parse** | ✅ shipped to `main` (`2898d3a`); `swift build` green + run-verified (deadlock repro/fix + parser equivalence); XCTest committed (run under Xcode) |
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |
 | **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
@@ -15,6 +16,39 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | **Notion → wiki importer (`tools/notion-import.mjs`)** | 🟡 pure blocks→markdown converter run-verified (12 checks) + `--help` ok; **live Notion API path NOT fact-checked (per request) — verify on first run with your token** |
 
 ## Completed
+
+### 2026-06-30 — Wiki Studio Pass 1: Study core + Synthesis backlog
+- **What:** Reframe toward a study-first hub centered on `Personal_LLM_Wiki`. A **Study | Capture**
+  mode switch defaults to **Study**, where the wiki is the hero: big `concepts · cards` counts, a
+  **Launch Wiki Review** button (opens `review/index.html`), a **Refresh study data** button (runs
+  `review/generate.mjs` via the deadlock-safe `ProcessRunner`), a "jump back in" concept list, and a
+  quieter **synthesis backlog** panel listing `raw/journal` notes with no matching `wiki/sources/`
+  page (+ **Copy opencode prompt** / Reveal in Finder). Capture preserves the existing Apple
+  Notes → Notion/Wiki + video flow unchanged. The app never writes `wiki/` (synthesis stays LLM-owned).
+- **Files (new):** `Services/ProcessRunner.swift` (extracted), `Services/RepoPaths.swift`,
+  `Models/StudyData.swift`, `Services/StudyDataService.swift`, `Services/SynthesisBacklog.swift`,
+  `UI/StudyView.swift`; tests `RepoPathsTests`, `StudyDataParseTests`, `StudyDataServiceTests`,
+  `SynthesisBacklogTests` (+ `ProcessRunnerTests` moved to the new type).
+- **Files (modified):** `Services/AppleNotesService.swift` (uses `ProcessRunner`), `App/AppState.swift`
+  (mode + study/backlog state & actions), `UI/ContentView.swift` (mode switch), `UI/SettingsView.swift`
+  (Review-folder override).
+- **Branch:** `main`. **Commits:** `b75f665` (ProcessRunner), `99d7ac4` (RepoPaths), `323921c`
+  (StudyData), `826afca` (StudyDataService), `bac0a2c` (SynthesisBacklog), `329e5b5` (AppState),
+  `6deff00` (StudyView), `8c413d7` (mode switch + Settings). Spec `a6d2d1c`.
+- **Docs:** spec `docs/superpowers/specs/2026-06-30-wiki-studio-study-and-backlog-design.md`; plan
+  `docs/superpowers/plans/2026-06-30-wiki-studio-study-and-backlog.md`; mocks
+  `docs/mockups/2026-06-30-wiki-studio-{before-after,v2}.html`.
+- **Verification:** `swift build` ✅ exit 0; pure logic (StudyData.parse ranking, SynthesisBacklog
+  pending/split/prompt, RepoPaths.firstExisting) ✅ run-verified via standalone harness (11 assertions);
+  launch smoke ✅ (opens in Study mode, no crash, main thread healthy); `node` resolves at
+  `/opt/homebrew/bin/node`; `generate.mjs` regenerates real vault (55 concepts / 96 cards / 284 edges).
+- **Remaining gates:** run `swift test` under Xcode/CI (adds `RepoPathsTests`, `StudyDataParseTests`,
+  `StudyDataServiceTests`, `SynthesisBacklogTests`); manual click-through — Refresh regenerates + counts
+  update, Launch opens the review app, backlog lists the pending notes + Copy prompt works, Capture
+  flow intact.
+- **Out of scope (later passes):** Pass 2 full hub shell + in-app **Browse** (rendered wiki pages);
+  Pass 3 unified **Capture** menu (demote Notion); Pass 4 **X bookmarks** (paste-URL MVP first, OAuth
+  sync only with a paid X tier).
 
 ### 2026-06-30 — Bugfix: Apple Notes reader launch-deadlock + faster date parse
 - **Symptom (reported):** the Swift app "hangs" and the **Wiki tab "has nothing"**. Root-caused
