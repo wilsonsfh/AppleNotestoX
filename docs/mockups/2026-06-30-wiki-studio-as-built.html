@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiki Studio — before / after (as built, Pass 1)</title>
+<style>
+  :root{
+    --bg:#0d0e12;--surface:#15161c;--surface-2:#1b1d25;--elev:#20222e;
+    --border:#262833;--border-2:#343748;--text:#e8e8ec;--muted:#a0a0ad;--faint:#6b6c79;
+    --accent:#5b6cff;--accent-2:#8b7bff;--good:#46b98a;--warn:#e0a13a;--danger:#e0556b;
+    --r:14px;--r-sm:10px;--r-xs:8px;--shadow:0 1px 2px rgba(0,0,0,.3),0 20px 46px rgba(0,0,0,.5);--maxw:1300px;
+  }
+  :root[data-theme="light"]{--bg:#f5f6f8;--surface:#fff;--surface-2:#f0f1f5;--elev:#fff;--border:#e5e6ec;--border-2:#d7d9e2;--text:#14151d;--muted:#585a67;--faint:#9596a3;--shadow:0 1px 2px rgba(20,22,40,.06),0 16px 40px rgba(20,22,40,.12)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:32px 22px 80px}
+  h1,h2,h3{line-height:1.12;letter-spacing:-.02em;font-weight:680}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:var(--maxw);margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .eyebrow{color:var(--accent-2);font-weight:700;font-size:.75rem;letter-spacing:.09em;text-transform:uppercase}
+  h1.title{font-size:1.9rem;margin-top:6px}
+  .lede{color:var(--muted);max-width:70ch;margin-top:8px;font-size:.9rem}
+  .muted{color:var(--muted)}.faint{color:var(--faint);font-size:.78rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82em;background:var(--surface-2);border:1px solid var(--border);padding:.08em .38em;border-radius:6px}
+  .themetoggle{border:1px solid var(--border-2);background:var(--surface);color:var(--muted);border-radius:999px;font-size:.78rem;font-weight:600;padding:7px 12px;cursor:pointer}
+  .themetoggle:hover{color:var(--text)}
+  .grid{display:grid;grid-template-columns:0.82fr 1.18fr;gap:22px;margin-top:24px;align-items:start}
+  @media(max-width:1040px){.grid{grid-template-columns:1fr}}
+  .lab{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
+  .pill{font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:999px}
+  .pill.b{color:#cfd0da;background:#1a1b22;border:1px solid var(--border-2)}
+  .pill.a{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .lab small{color:var(--faint);font-size:.78rem}
+  .win{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+  .tbar{display:flex;align-items:center;gap:10px;padding:9px 12px;background:color-mix(in srgb,var(--bg) 55%,var(--surface));border-bottom:1px solid var(--border)}
+  .lights{display:flex;gap:7px}.lights i{width:11px;height:11px;border-radius:50%}
+  .lights .r{background:#ff5f57}.lights .y{background:#febc2e}.lights .g{background:#28c840}
+  .wt{font-size:.78rem;color:var(--muted);font-weight:600}
+  .spacer{flex:1}
+  .seg{display:inline-flex;border:1px solid var(--border-2);border-radius:var(--r-xs);overflow:hidden}
+  .seg span{padding:5px 13px;font-size:.78rem;font-weight:600;color:var(--muted)}.seg span.on{background:var(--elev);color:var(--text)}
+  .tbtn{font-size:.78rem;font-weight:600;border-radius:var(--r-xs);padding:5px 10px;border:1px solid var(--border-2);background:var(--elev);color:var(--muted)}
+  .icon{width:26px;height:26px;border:1px solid var(--border-2);border-radius:var(--r-xs);background:var(--elev);display:grid;place-items:center;color:var(--muted);font-size:.85rem}
+
+  /* BEFORE split */
+  .split{display:grid;grid-template-columns:188px 1fr;min-height:390px}
+  .side{border-right:1px solid var(--border);background:color-mix(in srgb,var(--bg) 40%,var(--surface));padding:10px}
+  .ph{font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:4px 4px 8px}
+  .row{display:flex;align-items:center;gap:9px;padding:6px;border-radius:7px;font-size:.82rem}
+  .chk{width:14px;height:14px;border:1.5px solid var(--faint);border-radius:4px;flex:none}
+  .chk.on{background:var(--accent);border-color:var(--accent)}
+  .ico{width:16px;text-align:center;color:var(--muted)}.cnt{margin-left:auto;color:var(--faint);font-size:.72rem}
+  .pane{padding:14px}
+  .field{font-size:.82rem;color:var(--muted);border:1px dashed var(--border-2);border-radius:8px;padding:10px 12px;margin:8px 0}
+
+  /* AFTER: StudyView = hero | divider | 300px backlog */
+  .study{display:grid;grid-template-columns:1fr 1px 300px;min-height:390px}
+  .vsep{background:var(--border)}
+  .hero{padding:24px;display:flex;flex-direction:column;gap:16px}
+  .k{font-size:.72rem;font-weight:700;color:var(--faint);letter-spacing:.09em;text-transform:uppercase}
+  .figure{display:flex;align-items:baseline;gap:10px}
+  .figure b{font-size:52px;font-weight:800;line-height:1}
+  .figure span{color:var(--muted)}
+  .sub{color:var(--muted);font-size:.9rem}
+  .acts{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{font-size:.85rem;font-weight:600;border-radius:var(--r-xs);padding:8px 13px;border:1px solid var(--border-2);background:var(--elev);color:var(--text);cursor:default;display:inline-flex;align-items:center;gap:7px}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent;color:#fff;box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 35%,transparent)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-size:.85rem;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--text) 12%,transparent)}
+  .backlog{padding:20px;display:flex;flex-direction:column;gap:10px;background:color-mix(in srgb,var(--bg) 30%,var(--surface))}
+  .bhead{display:flex;align-items:center;gap:8px}
+  .bhead h3{font-size:1.02rem}
+  .badge{font-size:.72rem;font-weight:800;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .it{display:flex;gap:8px;align-items:center;font-size:.85rem;padding:2px 0}
+  .it .dt{color:var(--faint);font-size:.72rem;font-variant-numeric:tabular-nums}
+  .it .sl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brow{display:flex;gap:8px;margin-top:6px}
+  .brow .btn{font-size:.76rem;padding:5px 9px}
+  .note{font-size:.72rem;color:var(--faint);margin-top:auto;border-top:1px dashed var(--border-2);padding-top:8px}
+
+  .why{margin-top:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:900px){.why{grid-template-columns:1fr 1fr}}
+  .why .w{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px}
+  .why .w b{font-size:.85rem}.why .w p{font-size:.76rem;color:var(--muted);margin-top:3px}
+  .why .w code{font-size:.7rem}
+  .foot{margin-top:26px;color:var(--faint);font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">AppleNotestoX · as built — Pass 1 (shipped to main)</div>
+      <h1 class="title">Before / after — Study core + Synthesis backlog</h1>
+      <p class="lede">This mirrors the shipped <code>StudyView.swift</code> exactly: a <b>Study | Capture</b> toolbar switch (Study is default), a wiki-hero with live counts + Refresh/Launch + "jump back in", and a 300&nbsp;px synthesis-backlog panel. Real vault data.</p>
+    </div>
+    <button class="themetoggle" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'dark':'light'">◑ Toggle theme</button>
+  </div>
+
+  <div class="grid">
+    <!-- BEFORE -->
+    <div>
+      <div class="lab"><span class="pill b">BEFORE</span><small>export tool — opens on the Notes→Notion/Wiki split</small></div>
+      <div class="win">
+        <div class="tbar">
+          <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+          <div class="wt">AppleNotestoX</div>
+          <div class="spacer"></div>
+          <div class="icon">⟳</div><div class="icon">⚙</div>
+          <span class="tbtn" style="color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent">Export to wiki</span>
+        </div>
+        <div class="split">
+          <div class="side">
+            <div class="ph">Apple Notes</div>
+            <div class="row"><span class="ico">▸</span><span class="ico">📁</span>Notes<span class="cnt">12</span></div>
+            <div class="row"><span class="chk on"></span><span class="ico">📄</span>Glints Journal</div>
+            <div class="row"><span class="chk"></span><span class="ico">📄</span>Travel expenses</div>
+            <div class="row"><span class="chk"></span><span class="ico">📄</span>Learning notes</div>
+          </div>
+          <div class="pane">
+            <div class="seg"><span>Notion</span><span class="on">Wiki</span></div>
+            <div class="field" style="margin-top:12px">Vault folder<br><span class="faint">~/Projects/Personal_LLM_Wiki</span></div>
+            <div class="field">Choose vault…</div>
+            <p class="faint" style="margin-top:6px">Study + backlog lived in a terminal + browser; the wiki was a write target.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div>
+      <div class="lab"><span class="pill a">AFTER</span><small>opens on Study — the wiki is the hero</small></div>
+      <div class="win">
+        <div class="tbar">
+          <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+          <div class="seg"><span class="on">Study</span><span>Capture</span></div>
+          <div class="spacer"></div>
+          <div class="icon">⟳</div><div class="icon">⚙</div>
+        </div>
+        <div class="study">
+          <!-- hero -->
+          <div class="hero">
+            <div class="k">Study your wiki</div>
+            <div class="figure"><b class="num">55</b><span>concepts · <span class="num">96</span> cards</span></div>
+            <div class="sub">last refreshed 2 minutes ago · <span class="num">284</span> links</div>
+            <div class="acts">
+              <span class="btn">↻ Refresh</span>
+              <span class="btn primary">✦ Launch Wiki Review</span>
+            </div>
+            <div style="margin-top:6px">
+              <div class="k" style="font-size:.68rem;margin-bottom:8px">Jump back in</div>
+              <div class="chips">
+                <span class="chip">Growth Arc</span>
+                <span class="chip">Focus And Agency</span>
+                <span class="chip">Personal Operating System</span>
+                <span class="chip">Communication And Articulation</span>
+                <span class="chip">Personal Wiki Init</span>
+                <span class="chip">2026 Mindset Shift</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="vsep"></div>
+
+          <!-- backlog -->
+          <div class="backlog">
+            <div class="bhead"><h3>Awaiting synthesis</h3><span class="badge num">12</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">current-mindset-goal-visioning</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">current-mindset-elaboration</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">sup-hackathon-ops-and-product</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">apple-notes-travel-expenses</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">apple-notes-personal-reflections</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">apple-notes-learning-notes</span></div>
+            <div class="it"><span class="dt">06-30</span><span class="sl">ai-engineer-conference-clarification</span></div>
+            <div class="it"><span class="dt">06-29</span><span class="sl">global-config-execution-and-loop-rules</span></div>
+            <div class="faint">+ 4 more</div>
+            <div class="brow">
+              <span class="btn">Copy opencode prompt</span>
+              <span class="btn">📁</span>
+            </div>
+            <div class="note">Synthesis stays LLM-owned — the app surfaces what's in raw/ but not yet in wiki/sources/.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="why">
+        <div class="w"><b>Wiki is the hero</b><p>Study is the default mode; big counts + wiki actions dominate.</p></div>
+        <div class="w"><b>One primary action</b><p>Only <b>Launch Wiki Review</b> carries the accent; Refresh is secondary.</p></div>
+        <div class="w"><b>Backlog made visible</b><p>12 <code>raw/journal</code> notes with no <code>wiki/sources/</code> page.</p></div>
+        <div class="w"><b>Capture unchanged</b><p>Toggle to Capture → the exact old Notes→Notion/Wiki split.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">As-built mock: <code>docs/mockups/2026-06-30-wiki-studio-as-built.html</code> · matches <code>StudyView.swift</code> + <code>ContentView.swift</code> shipped on <code>main</code>. Concept mocks: <code>…before-after.html</code>, <code>…v2.html</code>.</p>
+</div>
+</body>
+</html>
