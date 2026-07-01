@@ -13,7 +13,7 @@ final class ProcessRunnerTests: XCTestCase {
         // ~512 KB — far beyond the ~64 KB pipe buffer that triggers the deadlock.
         let byteCount = 512 * 1024
         let result = try await withTimeout(seconds: 20) {
-            try await AppleNotesService.runProcess(
+            try await ProcessRunner.run(
                 executableURL: URL(fileURLWithPath: "/bin/sh"),
                 arguments: ["-c", "yes 0123456789 | head -c \(byteCount)"]
             )
@@ -24,7 +24,7 @@ final class ProcessRunnerTests: XCTestCase {
 
     func testRunProcessCapturesStderrAndNonzeroStatus() async throws {
         let result = try await withTimeout(seconds: 10) {
-            try await AppleNotesService.runProcess(
+            try await ProcessRunner.run(
                 executableURL: URL(fileURLWithPath: "/bin/sh"),
                 arguments: ["-c", "echo boom 1>&2; exit 3"]
             )
@@ -36,7 +36,7 @@ final class ProcessRunnerTests: XCTestCase {
 
     func testRunProcessReturnsStdout() async throws {
         let result = try await withTimeout(seconds: 10) {
-            try await AppleNotesService.runProcess(
+            try await ProcessRunner.run(
                 executableURL: URL(fileURLWithPath: "/bin/echo"),
                 arguments: ["hello"]
             )

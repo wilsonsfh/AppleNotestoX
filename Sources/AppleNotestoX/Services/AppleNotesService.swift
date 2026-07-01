@@ -1,13 +1,5 @@
 import Foundation
 
-/// Thread-safe holder so a value read on one queue can be handed back to another.
-private final class DataBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = Data()
-    func set(_ d: Data) { lock.lock(); value = d; lock.unlock() }
-    func get() -> Data { lock.lock(); defer { lock.unlock() }; return value }
-}
-
 actor AppleNotesService {
     enum AppleNotesError: Error, LocalizedError {
         case scriptFailed(String)
@@ -47,58 +39,13 @@ actor AppleNotesService {
 
     // MARK: - Process
 
-    /// Result of running a child process: captured stdout/stderr plus exit status.
-    struct ProcessResult: Sendable {
-        let stdout: String
-        let stderr: String
-        let status: Int32
-    }
-
-    /// Runs a child process and returns its captured output. No Notes/TCC dependency,
-    /// so it is unit-testable in isolation.
-    static func runProcess(executableURL: URL, arguments: [String]) async throws -> ProcessResult {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<ProcessResult, Error>) in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let proc = Process()
-                proc.executableURL = executableURL
-                proc.arguments = arguments
-
-                let outPipe = Pipe()
-                let errPipe = Pipe()
-                proc.standardOutput = outPipe
-                proc.standardError = errPipe
-                do { try proc.run() } catch { cont.resume(throwing: error); return }
-
-                // Drain stdout and stderr *concurrently while the child runs*.
-                // Reading only after `waitUntilExit()` deadlocks once output exceeds
-                // the OS pipe buffer (~64 KB): the child blocks writing into a full
-                // pipe while we block waiting for it to exit. A Notes library's
-                // listing easily exceeds that, which froze the app at launch.
-                let errBox = DataBox()
-                let group = DispatchGroup()
-                group.enter()
-                DispatchQueue.global(qos: .userInitiated).async {
-                    errBox.set(errPipe.fileHandleForReading.readDataToEndOfFile())
-                    group.leave()
-                }
-                let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-                group.wait()
-                proc.waitUntilExit()
-
-                let out = String(data: outData, encoding: .utf8) ?? ""
-                let err = String(data: errBox.get(), encoding: .utf8) ?? ""
-                cont.resume(returning: ProcessResult(stdout: out, stderr: err, status: proc.terminationStatus))
-            }
-        }
-    }
-
     private func runScript(_ source: String, args: [String] = []) async throws -> String {
         var procArgs = ["-e", source]
         if !args.isEmpty {
             procArgs.append("--")
             procArgs.append(contentsOf: args)
         }
-        let result = try await Self.runProcess(
+        let result = try await ProcessRunner.run(
             executableURL: URL(fileURLWithPath: "/usr/bin/osascript"),
             arguments: procArgs
         )
