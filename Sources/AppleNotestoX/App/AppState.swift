@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import AppKit
 import KeychainAccess
 
 @Observable
@@ -38,6 +39,14 @@ final class AppState {
     var vaultURL: URL? = nil
     var wikiProgress: [WikiExportProgress] = []
     var transcribeNoteVideos = false
+
+    // Study + synthesis (Wiki Studio pass 1)
+    enum AppMode: String, Sendable { case study, capture }
+    var appMode: AppMode = .study
+    var studyData: StudyData? = nil
+    var isRefreshingStudy = false
+    var studyError: String? = nil
+    var backlogItems: [BacklogItem] = []
 
     // Services
     let notes: AppleNotesService
@@ -260,6 +269,46 @@ final class AppState {
             wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .failed(message: error.localizedDescription))]
         }
         isArchiving = false
+    }
+
+    // MARK: - Study + backlog
+
+    /// Cheap load on first show: read any existing snapshot + scan the backlog.
+    func loadStudyOnAppear() {
+        if studyData == nil { studyData = StudyDataService.loadExisting() }
+        loadBacklog()
+    }
+
+    func refreshStudyData() async {
+        guard let vault = vaultURL else { studyError = "Choose your vault first."; return }
+        isRefreshingStudy = true
+        studyError = nil
+        defer { isRefreshingStudy = false }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+        do {
+            studyData = try await StudyDataService.refresh(vaultURL: vault)
+            loadBacklog()
+        } catch {
+            studyError = error.localizedDescription
+        }
+    }
+
+    func launchWikiReview() {
+        NSWorkspace.shared.open(RepoPaths.indexHTML())
+    }
+
+    func loadBacklog() {
+        guard let vault = vaultURL else { backlogItems = []; return }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+        backlogItems = SynthesisBacklog.scan(vaultURL: vault)
+    }
+
+    func copyBacklogPrompt() {
+        let prompt = SynthesisBacklog.opencodePrompt(backlogItems)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(prompt, forType: .string)
     }
 }
 
