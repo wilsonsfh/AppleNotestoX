@@ -8,14 +8,21 @@ struct ContentView: View {
     var body: some View {
         @Bindable var state = state
 
-        NavigationSplitView {
-            SourcePane()
-                .navigationSplitViewColumnWidth(min: 280, ideal: 360)
-        } detail: {
-            DestinationPane()
-                .navigationSplitViewColumnWidth(min: 320, ideal: 420)
+        Group {
+            switch state.appMode {
+            case .study: StudyView()
+            case .capture: captureSplit
+            }
         }
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Picker("Mode", selection: $state.appMode) {
+                    Text("Study").tag(AppState.AppMode.study)
+                    Text("Capture").tag(AppState.AppMode.capture)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
             ToolbarItem(placement: .principal) {
                 if state.isArchiving {
                     HStack {
@@ -40,14 +47,16 @@ struct ContentView: View {
                     Image(systemName: "gear")
                 }
 
-                if isWiki {
-                    Button("Export to wiki") { Task { await state.runWikiExport() } }
-                        .keyboardShortcut(.return, modifiers: [.command])
-                        .disabled(state.selectedNoteIDs.isEmpty || state.vaultURL == nil || state.isArchiving)
-                } else {
-                    Button("Archive…") { showPreview = true }
-                        .keyboardShortcut(.return, modifiers: [.command])
-                        .disabled(state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil || state.isArchiving)
+                if state.appMode == .capture {
+                    if isWiki {
+                        Button("Export to wiki") { Task { await state.runWikiExport() } }
+                            .keyboardShortcut(.return, modifiers: [.command])
+                            .disabled(state.selectedNoteIDs.isEmpty || state.vaultURL == nil || state.isArchiving)
+                    } else {
+                        Button("Archive…") { showPreview = true }
+                            .keyboardShortcut(.return, modifiers: [.command])
+                            .disabled(state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil || state.isArchiving)
+                    }
                 }
             }
         }
@@ -58,6 +67,16 @@ struct ContentView: View {
             Button("OK") { state.errorMessage = nil }
         } message: {
             Text(state.errorMessage ?? "")
+        }
+    }
+
+    private var captureSplit: some View {
+        NavigationSplitView {
+            SourcePane()
+                .navigationSplitViewColumnWidth(min: 280, ideal: 360)
+        } detail: {
+            DestinationPane()
+                .navigationSplitViewColumnWidth(min: 320, ideal: 420)
         }
     }
 

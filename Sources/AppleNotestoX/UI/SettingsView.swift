@@ -1,9 +1,11 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
     @State private var draft: String = ""
+    @State private var reviewDraft: String = UserDefaults.standard.string(forKey: RepoPaths.reviewFolderOverrideKey) ?? ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -34,6 +36,28 @@ struct SettingsView: View {
                     }
                 }
                 .controlSize(.small)
+            }
+
+            Divider().padding(.vertical, 4)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Review folder (advanced)").font(.subheadline).bold()
+                Text("Where review/generate.mjs and index.html live. Leave blank to use the app's bundled copy.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    TextField("~/Projects/AppleNotestoX/review", text: $reviewDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: reviewDraft) { _, v in
+                            UserDefaults.standard.set(v.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                      forKey: RepoPaths.reviewFolderOverrideKey)
+                        }
+                    Button("Choose…") {
+                        let panel = NSOpenPanel()
+                        panel.canChooseDirectories = true
+                        panel.canChooseFiles = false
+                        if panel.runModal() == .OK, let u = panel.url { reviewDraft = u.path }
+                    }
+                }
             }
 
             Spacer()
