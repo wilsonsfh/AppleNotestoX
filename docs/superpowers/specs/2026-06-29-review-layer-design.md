@@ -51,7 +51,7 @@ review/
     recap.js            # narrated auto-advancing slides + audio recap
     app.js              # tiny hash router + Today dashboard + view mounting
   study-data.sample.js  # committed demo dataset (window.STUDY_DATA)
-  study-data.js         # GENERATED (gitignored) — real vault data
+  study-data.js         # GENERATED (gitignored) from the selected vault
   generate.mjs          # Node: vault wiki/ -> study-data.js
   mockups/compare.html  # design comparison (A vs B)
 ```
@@ -87,11 +87,11 @@ review/
 - **Reduced motion:** `prefers-reduced-motion` disables card-flip/graph-settle animation.
 - **Keyboard + focus:** full keyboard review loop; visible `:focus-visible` rings; hit
   targets ≥ 40px; AA contrast in both themes.
-- **Real content, no lorem;** long answers/titles wrap; zero-link concepts render fine.
+- **Representative synthetic content, no lorem;** long answers/titles wrap; zero-link concepts render fine.
 
 ## 6. Verification
 
-- **Generator:** run against the real `~/Projects/Personal_LLM_Wiki` with Node; assert it
+- **Generator:** run against the configured default `~/Projects/Personal_LLM_Wiki` with Node; assert it
   emits well-formed `study-data.js` (concepts > 0, valid edges referencing concept ids,
   cards present). Sanity-print counts.
 - **SRS:** headless `node` check of SM-2 (q=5 path 1→6→ceil; q<3 resets; EF floor 1.3).

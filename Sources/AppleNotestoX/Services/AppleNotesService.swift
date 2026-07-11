@@ -1,6 +1,9 @@
 import Foundation
 
 actor AppleNotesService {
+    static let temporaryDirectoryMarkerName = ".applenotestox-owned"
+    private static let temporaryDirectoryMarkerContents = Data("apple-notes-attachments\n".utf8)
+
     enum AppleNotesError: Error, LocalizedError {
         case scriptFailed(String)
         case parseFailed(String)
@@ -22,11 +25,42 @@ actor AppleNotesService {
     }
 
     func fetchNote(id: String) async throws -> AppleNoteContent {
+        let fileManager = FileManager.default
         let tmpDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("AppleNotestoX-" + UUID().uuidString)
-        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        var transferredToConsumer = false
+        defer {
+            if !transferredToConsumer {
+                try? fileManager.removeItem(at: tmpDir)
+            }
+        }
+        try Self.markTemporaryDirectoryOwned(tmpDir)
         let raw = try await runScript(Self.fetchScript, args: [id, tmpDir.path])
-        return try Self.parseNoteContent(raw)
+        let content = try Self.parseNoteContent(raw)
+        transferredToConsumer = Self.hasTemporaryAttachments(content)
+        return content
+    }
+
+    static func hasTemporaryAttachments(_ content: AppleNoteContent) -> Bool {
+        !content.attachments.isEmpty
+    }
+
+    static func markTemporaryDirectoryOwned(_ directory: URL) throws {
+        try temporaryDirectoryMarkerContents.write(
+            to: directory.appendingPathComponent(temporaryDirectoryMarkerName),
+            options: .atomic
+        )
+    }
+
+    static func cleanupTemporaryAttachments(in content: AppleNoteContent) {
+        let fileManager = FileManager.default
+        let directories = Set(content.attachments.map { $0.localURL.deletingLastPathComponent() })
+        for directory in directories {
+            let marker = directory.appendingPathComponent(temporaryDirectoryMarkerName)
+            guard (try? Data(contentsOf: marker)) == temporaryDirectoryMarkerContents else { continue }
+            try? fileManager.removeItem(at: directory)
+        }
     }
 
     func moveNote(id: String, toFolderNamed folderName: String, in accountName: String) async throws {

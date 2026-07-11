@@ -10,63 +10,98 @@ struct StudyView: View {
         HStack(alignment: .top, spacing: 0) {
             hero
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(24)
+                .padding(WorkspaceStyle.spacing24)
             Divider()
             backlog
-                .frame(width: 300)
-                .padding(20)
+                .frame(width: 320)
+                .background(Color(nsColor: .underPageBackgroundColor))
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .task { state.loadStudyOnAppear() }
     }
 
     // MARK: hero (the wiki)
     @ViewBuilder private var hero: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("STUDY YOUR WIKI").font(.caption).fontWeight(.bold)
-                .foregroundStyle(.tertiary).kerning(1)
+        VStack(alignment: .leading, spacing: WorkspaceStyle.spacing16) {
+            Text("Study your wiki")
+                .font(.system(.largeTitle, design: .serif, weight: .semibold))
 
             if state.vaultURL == nil {
                 emptyVault
             } else {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("\(state.studyData?.conceptCount ?? 0)")
-                        .font(.system(size: 52, weight: .bold)).monospacedDigit()
-                    Text("concepts · \(state.studyData?.cardCount ?? 0) cards")
-                        .foregroundStyle(.secondary)
+                Text("\(state.studyData?.conceptCount ?? 0)")
+                    .font(.system(size: 60, weight: .semibold))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.75)
+                    .accessibilityLabel(
+                        (state.studyData?.conceptCount ?? 0) == 1
+                            ? "1 concept"
+                            : "\(state.studyData?.conceptCount ?? 0) concepts"
+                    )
+
+                HStack(spacing: WorkspaceStyle.spacing8) {
+                    Text("\(state.studyData?.cardCount ?? 0) cards")
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Text("\(state.studyData?.edgeCount ?? 0) links")
                 }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
                 if let gen = state.studyData?.generatedAt {
-                    Text("last refreshed \(relative(gen)) · \(state.studyData?.edgeCount ?? 0) links")
-                        .font(.callout).foregroundStyle(.secondary)
+                    Text("last refreshed \(relative(gen))")
+                        .font(.callout)
+                        .foregroundStyle(.tertiary)
                 } else {
                     Text("No study data yet — hit Refresh to build it.")
-                        .font(.callout).foregroundStyle(.secondary)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 10) {
+                HStack(spacing: WorkspaceStyle.spacing8) {
+                    Button {
+                        state.launchWikiReview()
+                    } label: {
+                        Label("Launch Wiki Review", systemImage: "book.pages")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(state.studyData == nil)
+
                     Button {
                         Task { await state.refreshStudyData() }
                     } label: {
-                        if state.isRefreshingStudy { ProgressView().controlSize(.small) }
-                        else { Label("Refresh", systemImage: "arrow.clockwise") }
+                        HStack(spacing: WorkspaceStyle.spacing4) {
+                            if state.isRefreshingStudy {
+                                ProgressView().controlSize(.small)
+                                Text("Refreshing…")
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Refresh")
+                            }
+                        }
                     }
                     .disabled(state.isRefreshingStudy)
-
-                    Button {
-                        state.launchWikiReview()
-                    } label: { Label("Launch Wiki Review", systemImage: "sparkles") }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(state.studyData == nil)
                 }
 
                 if let err = state.studyError {
-                    Text(err).font(.caption).foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .top, spacing: WorkspaceStyle.spacing4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityHidden(true)
+                        Text(err)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Error: \(err)")
                 }
 
                 if let top = state.studyData?.topConcepts, !top.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("JUMP BACK IN").font(.caption2).fontWeight(.bold)
-                            .foregroundStyle(.tertiary).kerning(1).padding(.top, 6)
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                        WorkspaceSectionLabel("Jump back in")
+                            .padding(.top, WorkspaceStyle.spacing8)
                         FlowChips(items: top)
                     }
                 }
@@ -76,40 +111,52 @@ struct StudyView: View {
     }
 
     @ViewBuilder private var emptyVault: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Choose your vault to begin").font(.title3).bold()
-            Text("Wiki Studio studies your Personal_LLM_Wiki. Pick the vault folder in the Wiki (Capture) tab.")
-                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Button("Go to Capture") { state.appMode = .capture }
-        }
+        WorkspaceEmptyState(
+            systemImage: "books.vertical",
+            title: "Choose your vault to begin",
+            message: "Wiki Studio studies your Personal_LLM_Wiki. Pick the vault folder in the Wiki (Capture) tab."
+        )
+        Button("Go to Capture") { state.appMode = .capture }
+            .padding(.top, WorkspaceStyle.spacing8)
     }
 
     // MARK: backlog (supporting)
     @ViewBuilder private var backlog: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Awaiting synthesis").font(.headline)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: WorkspaceStyle.spacing8) {
+                WorkspaceSectionLabel("Awaiting synthesis")
                 if !state.backlogItems.isEmpty {
-                    Text("\(state.backlogItems.count)").font(.caption).fontWeight(.bold)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.orange)
+                    WorkspaceBadge(text: "\(state.backlogItems.count)", tint: .orange)
                 }
             }
+            .padding(.bottom, WorkspaceStyle.spacing12)
+
             if state.backlogItems.isEmpty {
                 Text("All caught up — nothing waiting in raw/.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             } else {
-                ForEach(state.backlogItems.prefix(8)) { item in
-                    HStack(spacing: 8) {
-                        Text(item.date).font(.caption).monospacedDigit().foregroundStyle(.tertiary)
-                        Text(item.slug).font(.callout).lineLimit(1)
+                VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                    ForEach(state.backlogItems.prefix(8)) { item in
+                        HStack(spacing: WorkspaceStyle.spacing8) {
+                            Text(item.date)
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.tertiary)
+                            Text(item.slug)
+                                .font(.callout)
+                                .lineLimit(1)
+                        }
+                    }
+                    if state.backlogItems.count > 8 {
+                        Text("+ \(state.backlogItems.count - 8) more")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
                     }
                 }
-                if state.backlogItems.count > 8 {
-                    Text("+ \(state.backlogItems.count - 8) more").font(.caption).foregroundStyle(.tertiary)
-                }
-                HStack {
+                .workspaceInsetSurface()
+
+                HStack(spacing: WorkspaceStyle.spacing8) {
                     Button("Copy opencode prompt") { state.copyBacklogPrompt() }
                     Button {
                         if let v = state.vaultURL {
@@ -117,14 +164,23 @@ struct StudyView: View {
                         }
                     } label: { Image(systemName: "folder") }
                     .help("Reveal raw/journal in Finder")
+                    .accessibilityLabel("Reveal raw journal in Finder")
                 }
                 .controlSize(.small)
-                .padding(.top, 4)
+                .padding(.top, WorkspaceStyle.spacing8)
             }
+
             Spacer()
+
             Text("Synthesis stays LLM-owned — the app surfaces what's in raw/ but not yet in wiki/sources/.")
-                .font(.caption2).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .workspaceFooterSurface()
+                .padding(.horizontal, -WorkspaceStyle.spacing16)
+                .padding(.bottom, -WorkspaceStyle.spacing16)
         }
+        .padding(WorkspaceStyle.spacing16)
     }
 
     private func relative(_ iso: String) -> String {
@@ -138,15 +194,24 @@ struct StudyView: View {
 }
 
 /// Simple wrapping chip row for the "jump back in" concept titles.
+/// Minimum width 170pt so multi-word concept labels stay readable at 900–1100pt window widths.
+/// lineLimit(2) prevents mid-concept truncation while keeping the grid compact.
 private struct FlowChips: View {
     let items: [String]
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 8, alignment: .leading)],
-                  alignment: .leading, spacing: 8) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 170), spacing: WorkspaceStyle.spacing8, alignment: .leading)],
+            alignment: .leading,
+            spacing: WorkspaceStyle.spacing8
+        ) {
             ForEach(items, id: \.self) { t in
-                Text(t).font(.callout).lineLimit(1)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.secondary.opacity(0.12), in: Capsule())
+                Text(t)
+                    .font(.callout)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, WorkspaceStyle.spacing12)
+                    .padding(.vertical, WorkspaceStyle.spacing8)
+                    .background(Color(nsColor: .controlBackgroundColor), in: Capsule())
             }
         }
     }

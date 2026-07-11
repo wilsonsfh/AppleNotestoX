@@ -67,6 +67,7 @@ actor ArchiveCoordinator {
     ) async throws {
         update(idx, .fetching)
         let content = try await notes.fetchNote(id: noteID)
+        defer { AppleNotesService.cleanupTemporaryAttachments(in: content) }
 
         update(idx, .converting)
         var blocks = NoteConverter.convert(html: content.html, attachments: content.attachments)

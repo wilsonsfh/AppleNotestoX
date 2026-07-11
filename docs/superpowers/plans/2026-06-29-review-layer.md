@@ -8,9 +8,9 @@
 
 ## Global Constraints
 - No bundler/deps; classic scripts (no ES modules in the app — `file://` safe). Generator may use Node ESM (`.mjs`).
-- Data via `window.STUDY_DATA` (sample committed; real one generated + gitignored).
+- Data via `window.STUDY_DATA` (synthetic sample committed; vault-derived output generated + gitignored).
 - SM-2 exact: EF'=max(1.3, EF+(0.1-(5-q)(0.08+(5-q)0.02))); n=1→1d, n=2→6d, else ceil(I·EF); q<3 resets n→0,I→1. Grades Again/Hard/Good/Easy=q 1/3/4/5.
-- `frontend-design` tokens (Direction B), `prefers-reduced-motion`, AA contrast, visible focus, real content.
+- `frontend-design` tokens (Direction B), `prefers-reduced-motion`, AA contrast, visible focus, representative synthetic content.
 - TTS: robust `voiceschanged`; start on user gesture.
 
 ## Tasks
@@ -44,7 +44,7 @@
 - Includes all js via classic `<script>` in order.
 
 ### Task 7: `review/study-data.sample.js`
-- Small realistic dataset (career/tech concepts from the notes: crux, outcome-oriented mindset, RPC, B+ tree, atomic commits…) with cards + edges, so the app runs with zero setup.
+- Small synthetic dataset about local-first knowledge pipelines, provenance, conversion, study/review, and safe agent workflows, with cards + edges so the app runs with zero setup.
 
 ### Task 8: Verify + commit + PROGRESS_REPORT + merge
-- `node --check` all js; run generator on real vault; gitignore `review/study-data.js`; commit atomically; update PROGRESS_REPORT; merge to main.
+- `node --check` all js; run generator against a configured test vault; gitignore `review/study-data.js`; commit atomically; update PROGRESS_REPORT; merge to main.

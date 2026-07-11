@@ -38,8 +38,8 @@ final class MarkdownRendererTests: XCTestCase {
         let id = UUID()
         let ok = MarkdownRenderer.render(
             [.imagePlaceholder(id: id, localPath: URL(fileURLWithPath: "/tmp/x"))],
-            inlineAsset: { $0 == id ? "![[glints-01.png]]" : nil })
-        XCTAssertEqual(ok.markdown, "![[glints-01.png]]\n")
+            inlineAsset: { $0 == id ? "![[project-journal-01.png]]" : nil })
+        XCTAssertEqual(ok.markdown, "![[project-journal-01.png]]\n")
         XCTAssertTrue(ok.warnings.isEmpty)
 
         let missing = MarkdownRenderer.render(

@@ -8,12 +8,32 @@ import CoreGraphics
 /// → merge with running offsets; and extract evenly-spaced keyframes. Uses
 /// macOS-14-safe completion-handler AVFoundation APIs wrapped in continuations.
 struct VideoTranscriptionService: Sendable {
+    static let temporaryDirectoryMarkerName = ".applenotestox-keyframes"
+    private static let temporaryDirectoryMarkerContents = Data("video-keyframes\n".utf8)
+
     let transcriber: AudioTranscriber
     let maxChunk: Double
 
     init(transcriber: AudioTranscriber = AppleSpeechTranscriber(), maxChunk: Double = 55) {
         self.transcriber = transcriber
         self.maxChunk = maxChunk
+    }
+
+    static func markTemporaryDirectoryOwned(_ directory: URL) throws {
+        try temporaryDirectoryMarkerContents.write(
+            to: directory.appendingPathComponent(temporaryDirectoryMarkerName),
+            options: .atomic
+        )
+    }
+
+    static func cleanupTemporaryKeyframes(_ keyframes: [(t: Double, url: URL)]) {
+        let fileManager = FileManager.default
+        let directories = Set(keyframes.map { $0.url.deletingLastPathComponent() })
+        for directory in directories {
+            let marker = directory.appendingPathComponent(temporaryDirectoryMarkerName)
+            guard (try? Data(contentsOf: marker)) == temporaryDirectoryMarkerContents else { continue }
+            try? fileManager.removeItem(at: directory)
+        }
     }
 
     enum VideoError: LocalizedError {
@@ -67,6 +87,12 @@ struct VideoTranscriptionService: Sendable {
             throw VideoError.exportUnavailable
         }
         let out = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
+        var completed = false
+        defer {
+            if !completed {
+                try? FileManager.default.removeItem(at: out)
+            }
+        }
         export.outputURL = out
         export.outputFileType = .m4a
         export.timeRange = CMTimeRange(
@@ -84,6 +110,7 @@ struct VideoTranscriptionService: Sendable {
                 }
             }
         }
+        completed = true
         return out
     }
 
@@ -96,6 +123,13 @@ struct VideoTranscriptionService: Sendable {
 
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("kf-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var transferredToConsumer = false
+        defer {
+            if !transferredToConsumer {
+                try? FileManager.default.removeItem(at: dir)
+            }
+        }
+        try Self.markTemporaryDirectoryOwned(dir)
 
         let times = timestamps.map { NSValue(time: CMTime(seconds: $0, preferredTimescale: 600)) }
         let results = KeyframeResults()
@@ -116,7 +150,9 @@ struct VideoTranscriptionService: Sendable {
                 counter.decrement()
             }
         }
-        return results.sorted
+        let sorted = results.sorted
+        transferredToConsumer = !sorted.isEmpty
+        return sorted
     }
 }
 

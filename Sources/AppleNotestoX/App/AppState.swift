@@ -15,6 +15,8 @@ final class AppState {
     var selectedNoteIDs: Set<String> = []
     var expandedFolderIDs: Set<String> = []
     var archivedNoteIDs: Set<String> = []
+    var noteSearchQuery = ""
+    var noteSearchFocusRequest = 0
 
     // Notion hierarchy (lazily loaded)
     var notionRoots: [NotionPage] = []
@@ -35,10 +37,14 @@ final class AppState {
 
     // Wiki export
     enum ExportDestination: String, Sendable { case notion, wiki }
-    var exportDestination: ExportDestination = .notion
+    var exportDestination: ExportDestination = .wiki
     var vaultURL: URL? = nil
     var wikiProgress: [WikiExportProgress] = []
+    var videoProgress: [WikiExportProgress] = []
+    var isExportingToWiki = false
     var transcribeNoteVideos = false
+
+    var canStartWikiExport: Bool { !isArchiving && !isExportingToWiki }
 
     // Study + synthesis (Wiki Studio pass 1)
     enum AppMode: String, Sendable { case study, capture }
@@ -109,6 +115,17 @@ final class AppState {
     }
 
     // MARK: - Apple Notes
+
+    func requestNoteSearch() {
+        appMode = .capture
+        noteSearchFocusRequest &+= 1
+    }
+
+    func toggleNoteSelection(_ noteID: String) {
+        guard !isArchiving else { return }
+        if !wikiProgress.isEmpty { wikiProgress = [] }
+        if selectedNoteIDs.remove(noteID) == nil { selectedNoteIDs.insert(noteID) }
+    }
 
     func loadAppleHierarchy() async {
         loadingApple = true
@@ -228,7 +245,19 @@ final class AppState {
     }
 
     func runWikiExport() async {
-        guard let vault = vaultURL, !selectedNoteIDs.isEmpty, let h = hierarchy else { return }
+        guard canStartWikiExport,
+              let vault = vaultURL,
+              !selectedNoteIDs.isEmpty,
+              let h = hierarchy else { return }
+
+        isArchiving = true
+        isExportingToWiki = true
+        defer {
+            isArchiving = false
+            isExportingToWiki = false
+        }
+        videoProgress = []
+
         let didAccess = vault.startAccessingSecurityScopedResource()
         defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
 
@@ -237,25 +266,25 @@ final class AppState {
             config: WikiVaultConfig(vaultURL: vault),
             transcribeVideos: transcribeNoteVideos
         )
-        isArchiving = true
         wikiProgress = []
         let stream = wikiCoordinator.export(job: job, hierarchy: h)
         for await snapshot in stream {
             wikiProgress = snapshot
         }
-        isArchiving = false
         selectedNoteIDs.removeAll()
     }
 
     /// Transcribes a user-chosen video file directly into the vault as a transcript note.
     func importVideo(url: URL) async {
-        guard let vault = vaultURL else { return }
+        guard !isArchiving, let vault = vaultURL else { return }
+        isArchiving = true
+        defer { isArchiving = false }
+
         let didAccess = vault.startAccessingSecurityScopedResource()
         defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
 
         let id = url.path
-        isArchiving = true
-        wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .converting)]
+        videoProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .converting)]
         do {
             let result = try await videoCoordinator.ingest(
                 videoURL: url,
@@ -264,11 +293,10 @@ final class AppState {
                 config: WikiVaultConfig(vaultURL: vault),
                 sourceApp: "imported-file"
             )
-            wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .done(result: result))]
+            videoProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .done(result: result))]
         } catch {
-            wikiProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .failed(message: error.localizedDescription))]
+            videoProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .failed(message: error.localizedDescription))]
         }
-        isArchiving = false
     }
 
     // MARK: - Study + backlog

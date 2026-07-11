@@ -7,57 +7,70 @@ struct PreviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Confirm archive")
-                .font(.title2).bold()
-                .padding(.top, 16)
-                .padding(.horizontal, 20)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing4) {
+                        Text("Confirm Archive")
+                            .font(.title2.weight(.semibold))
+                        if let h = state.hierarchy {
+                            let selected = state.selectedNoteIDs.compactMap { h.notes[$0] }
+                            let destTitle = destinationTitle()
+                            Text("\(selected.count) note\(selected.count == 1 ? "" : "s") \u{2192} \(destTitle)")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, WorkspaceStyle.spacing16)
+                    .padding(.top, WorkspaceStyle.spacing16)
+                    .padding(.bottom, WorkspaceStyle.spacing12)
 
-            if let h = state.hierarchy {
-                let selected = state.selectedNoteIDs.compactMap { h.notes[$0] }
-                let destTitle = destinationTitle()
-                Group {
-                    Text("\(selected.count) note(s) → \(destTitle)")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
+                    Divider()
 
-                Divider().padding(.vertical, 8)
-
-                List {
-                    ForEach(selected, id: \.id) { note in
-                        if let progress = progressFor(note.id) {
-                            ProgressRow(progress: progress)
-                        } else {
-                            HStack {
-                                Image(systemName: "doc.text").foregroundStyle(.secondary)
-                                Text(note.name)
-                                Spacer()
+                    if let h = state.hierarchy {
+                        let selected = state.selectedNoteIDs.compactMap { h.notes[$0] }
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(selected, id: \.id) { note in
+                                if let progress = progressFor(note.id) {
+                                    ProgressRow(progress: progress)
+                                        .padding(.horizontal, WorkspaceStyle.spacing16)
+                                        .padding(.vertical, WorkspaceStyle.spacing8)
+                                } else {
+                                    HStack(spacing: WorkspaceStyle.spacing8) {
+                                        Image(systemName: "doc.text")
+                                            .foregroundStyle(.secondary)
+                                            .accessibilityHidden(true)
+                                        Text(note.name)
+                                            .lineLimit(2)
+                                            .help(note.name)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, WorkspaceStyle.spacing16)
+                                    .padding(.vertical, WorkspaceStyle.spacing8)
+                                    .accessibilityElement(children: .ignore)
+                                    .accessibilityLabel(note.name)
+                                }
                             }
                         }
+                    } else {
+                        Text("Apple Notes hierarchy not loaded.")
+                            .foregroundStyle(.secondary)
+                            .padding(WorkspaceStyle.spacing16)
                     }
-                }
-                .frame(minHeight: 200, maxHeight: 320)
 
-                Divider()
+                    Divider()
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("After successful archive").font(.subheadline).bold()
-                    ForEach(PostArchiveDisposition.allCases) { option in
-                        HStack {
-                            Image(systemName: disposition == option ? "largecircle.fill.circle" : "circle")
-                                .foregroundStyle(disposition == option ? .blue : .secondary)
-                            Text(option.label)
-                            Spacer()
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                        Picker("After successful archive", selection: $disposition) {
+                            ForEach(PostArchiveDisposition.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture { disposition = option }
+                        .pickerStyle(.radioGroup)
                     }
+                    .padding(.horizontal, WorkspaceStyle.spacing16)
+                    .padding(.top, WorkspaceStyle.spacing12)
+                    .padding(.bottom, WorkspaceStyle.spacing12)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-            } else {
-                Text("Apple Notes hierarchy not loaded.").padding()
             }
 
             HStack {
@@ -65,18 +78,33 @@ struct PreviewSheet: View {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
                     .disabled(state.isArchiving)
-                Button(state.isArchiving ? "Archiving…" : "Archive") {
-                    Task {
-                        await state.runArchive(disposition: disposition)
+                if disposition == .delete {
+                    Button(role: .destructive) {
+                        Task {
+                            await state.runArchive(disposition: disposition)
+                        }
+                    } label: {
+                        Text(state.isArchiving ? "Archiving\u{2026}" : "Archive and Delete Original")
                     }
+                    .keyboardShortcut(.return)
+                    .disabled(state.isArchiving || state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil)
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button {
+                        Task {
+                            await state.runArchive(disposition: disposition)
+                        }
+                    } label: {
+                        Text(state.isArchiving ? "Archiving\u{2026}" : "Archive")
+                    }
+                    .keyboardShortcut(.return)
+                    .disabled(state.isArchiving || state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil)
+                    .buttonStyle(.borderedProminent)
                 }
-                .keyboardShortcut(.return)
-                .disabled(state.isArchiving || state.selectedNoteIDs.isEmpty || state.selectedNotionPageID == nil)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .workspaceFooterSurface()
         }
-        .frame(width: 520)
+        .frame(width: 520, height: 480)
     }
 
     private func destinationTitle() -> String {
@@ -85,7 +113,7 @@ struct PreviewSheet: View {
         for kids in state.notionChildren.values {
             if let p = kids.first(where: { $0.id == id }) { return p.title }
         }
-        return id.prefix(8) + "…"
+        return id.prefix(8) + "\u{2026}"
     }
 
     private func progressFor(_ noteID: String) -> NoteArchiveProgress? {
@@ -97,12 +125,18 @@ private struct ProgressRow: View {
     let progress: NoteArchiveProgress
 
     var body: some View {
-        HStack {
+        HStack(spacing: WorkspaceStyle.spacing8) {
             statusIcon
             Text(progress.title)
+                .lineLimit(2)
+                .help(progress.title)
             Spacer()
-            Text(statusText).font(.caption).foregroundStyle(.secondary)
+            Text(statusText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(progress.title), \(statusText)")
     }
 
     private var statusIcon: some View {
@@ -121,11 +155,11 @@ private struct ProgressRow: View {
     private var statusText: String {
         switch progress.status {
         case .pending: return "queued"
-        case .fetching: return "reading note…"
-        case .converting: return "converting…"
-        case .uploadingImages(let d, let t): return "uploading \(d)/\(t) images…"
-        case .writingBlocks: return "writing to Notion…"
-        case .dispositioning: return "tidying source…"
+        case .fetching: return "reading note\u{2026}"
+        case .converting: return "converting\u{2026}"
+        case .uploadingImages(let d, let t): return "uploading \(d)/\(t) images\u{2026}"
+        case .writingBlocks: return "writing to Notion\u{2026}"
+        case .dispositioning: return "tidying source\u{2026}"
         case .done: return "done"
         case .failed(let m): return "failed: \(m)"
         }

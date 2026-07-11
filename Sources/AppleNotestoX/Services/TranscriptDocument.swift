@@ -18,15 +18,15 @@ enum TranscriptDocument {
     ) -> String {
         let frontmatter = """
         ---
-        origin: transcribed
-        source_type: video-transcript
-        source_app: \(sourceApp)
-        engine: \(transcript.engine)
-        source_video: \(sourceName)
+        origin: \(WikiNaming.yamlScalar("transcribed"))
+        source_type: \(WikiNaming.yamlScalar("video-transcript"))
+        source_app: \(WikiNaming.yamlScalar(sourceApp))
+        engine: \(WikiNaming.yamlScalar(transcript.engine))
+        source_video: \(WikiNaming.yamlScalar(sourceName))
         duration_seconds: \(Int(transcript.durationSeconds.rounded()))
-        title: \(title)
-        note_modified: \(WikiNaming.isoDay(modified))
-        exported: \(WikiNaming.isoDay(exported))
+        title: \(WikiNaming.yamlScalar(title))
+        note_modified: \(WikiNaming.yamlScalar(WikiNaming.isoDay(modified)))
+        exported: \(WikiNaming.yamlScalar(WikiNaming.isoDay(exported)))
         ---
         > Provenance: MACHINE-TRANSCRIBED (\(transcript.engine)). May contain errors.
         > Treat as lower-confidence; synthesize into wiki/, don't edit here.

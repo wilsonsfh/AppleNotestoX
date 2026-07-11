@@ -28,23 +28,31 @@ actor VideoIngestCoordinator {
         let slug = WikiNaming.slug(from: effectiveTitle)
 
         let (transcript, keyframes) = try await service.transcribe(videoURL: videoURL, keyframeCount: keyframeCount)
+        defer { VideoTranscriptionService.cleanupTemporaryKeyframes(keyframes) }
 
-        var usedNames = Set<String>()
         var assetPaths: [URL] = []
+        var createdAssets: [WikiNaming.CreatedFile] = []
+        var committed = false
+        defer {
+            if !committed {
+                for output in createdAssets { WikiNaming.removeIfIdentityMatches(output) }
+            }
+        }
         var keyframePairs: [(t: Double, filename: String)] = []
         var warnings: [String] = []
 
         // Keyframes.
         for (index, frame) in keyframes.enumerated() {
-            var name = WikiNaming.assetFilename(slug: "\(slug)-kf", index: index + 1, ext: "png")
-            name = WikiNaming.uniqueName(name, existing: usedNames)
-            usedNames.insert(name)
-            let dest = config.assetsDir.appendingPathComponent(name)
+            let preferredName = WikiNaming.assetFilename(slug: "\(slug)-kf", index: index + 1, ext: "png")
             do {
-                if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
-                try fm.copyItem(at: frame.url, to: dest)
-                assetPaths.append(dest)
-                keyframePairs.append((frame.t, name))
+                let createdFile = try WikiNaming.copyTracked(
+                    source: frame.url,
+                    preferredName: preferredName,
+                    to: config.assetsDir
+                )
+                assetPaths.append(createdFile.url)
+                createdAssets.append(createdFile)
+                keyframePairs.append((frame.t, createdFile.url.lastPathComponent))
             } catch {
                 warnings.append("failed to copy keyframe: \(error.localizedDescription)")
             }
@@ -52,14 +60,15 @@ actor VideoIngestCoordinator {
 
         // A copy of the source video, so the note is self-contained.
         let videoExt = videoURL.pathExtension.isEmpty ? "mov" : videoURL.pathExtension
-        var videoName = WikiNaming.assetFilename(slug: "\(slug)-video", index: 1, ext: videoExt)
-        videoName = WikiNaming.uniqueName(videoName, existing: usedNames)
-        usedNames.insert(videoName)
-        let videoDest = config.assetsDir.appendingPathComponent(videoName)
+        let preferredVideoName = WikiNaming.assetFilename(slug: "\(slug)-video", index: 1, ext: videoExt)
         do {
-            if fm.fileExists(atPath: videoDest.path) { try fm.removeItem(at: videoDest) }
-            try fm.copyItem(at: videoURL, to: videoDest)
-            assetPaths.append(videoDest)
+            let createdFile = try WikiNaming.copyTracked(
+                source: videoURL,
+                preferredName: preferredVideoName,
+                to: config.assetsDir
+            )
+            assetPaths.append(createdFile.url)
+            createdAssets.append(createdFile)
         } catch {
             warnings.append("failed to copy source video: \(error.localizedDescription)")
         }
@@ -74,15 +83,14 @@ actor VideoIngestCoordinator {
             modified: modified,
             exported: Date()
         )
-        let existing = Set((try? fm.contentsOfDirectory(atPath: config.journalDir.path)) ?? [])
-        let mdName = WikiNaming.uniqueName(
-            "\(WikiNaming.isoDay(modified))-\(slug)-transcript.md",
-            existing: existing
+        let markdownFile = try WikiNaming.publishTracked(
+            data: Data(body.utf8),
+            preferredName: "\(WikiNaming.isoDay(modified))-\(slug)-transcript.md",
+            in: config.journalDir
         )
-        let mdURL = config.journalDir.appendingPathComponent(mdName)
-        try body.write(to: mdURL, atomically: true, encoding: .utf8)
+        committed = true
 
         let imageCount = assetPaths.filter { Self.imageExts.contains($0.pathExtension.lowercased()) }.count
-        return WikiExportResult(markdownPath: mdURL, assetPaths: assetPaths, imageCount: imageCount, warnings: warnings)
+        return WikiExportResult(markdownPath: markdownFile.url, assetPaths: assetPaths, imageCount: imageCount, warnings: warnings)
     }
 }

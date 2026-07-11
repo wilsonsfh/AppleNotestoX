@@ -25,7 +25,7 @@ start over.
 |---|---|---|
 | `AppleNotestoX` (this repo) | macOS SwiftUI app that exports Apple Notes → **Notion**, preserving image position | Yes — the base we extend |
 | `~/Projects/Personal_LLM_Wiki` | Obsidian vault running Karpathy's "LLM Wiki" pattern (`raw/` immutable sources → `wiki/` LLM-generated, cross-linked). Ingest/query/lint workflows in its `AGENTS.md` | Yes — the **destination** |
-| `~/Projects/Cloudflare_WSFH_LLM_Wiki` | Same pattern, work-only | No (Glints note is personal-domain) |
+| Separate work-only vault | Same pattern, isolated from the default vault | No (acceptance note belongs in the default vault) |
 
 Key existing code in `AppleNotestoX`:
 
@@ -50,7 +50,7 @@ Apple Note (text + screenshots, **positions preserved**) into the
 `Personal_LLM_Wiki` vault as a provenance-stamped markdown file plus local image
 assets — ready for the wiki's existing LLM ingest workflow.
 
-**Acceptance/test case:** the owner's real **Glints internship note** (screenshot-heavy)
+**Acceptance/test case:** a **screenshot-heavy acceptance note**
 exports faithfully, with each screenshot beside the correct paragraph.
 
 ### Out of scope (later sub-projects)
@@ -137,9 +137,9 @@ progress stream + toolbar status, `PreviewSheet` (optional preview).
 ```
 Personal_LLM_Wiki/
   raw/
-    journal/2026-03-24-glints-journal.md     # new
-    assets/glints-journal-01.png             # new (original bytes)
-            glints-journal-02.png
+    journal/2026-03-24-project-journal.md     # new
+    assets/project-journal-01.png             # new (original bytes)
+            project-journal-02.png
             ...
 ```
 
@@ -200,7 +200,7 @@ file, so they are visible during review.
   (→ unplaced section); non-image attachment; `ATTERR`. Assert warnings + ordering.
 - **Provenance/frontmatter test:** correct YAML, slug derivation, date from
   `modifiedAt`, collision suffixing.
-- **Integration test with the real Glints note fixture (acceptance gate):** capture
+- **Integration test with a synthetic screenshot-heavy note fixture (acceptance gate):** capture
   its exported HTML + attachment list once into `Tests/Fixtures/`, run end-to-end
   into a temp vault dir, assert (a) image count preserved, (b) embeds land beside
   the correct surrounding text, (c) file written with provenance.
@@ -215,7 +215,7 @@ on the owner's machine (requires Automation permission).
 
 - **Positional pairing drift** — the main correctness risk for screenshot-heavy
   notes. Mitigated by the visible warnings + unplaced section above; if it proves
-  fragile on the Glints note, a follow-up can correlate attachment identifiers from
+  fragile on the screenshot-heavy acceptance note, a follow-up can correlate attachment identifiers from
   the note HTML (deferred — YAGNI until observed).
 - **Sandbox/file access** — writing into an arbitrary vault folder needs a
   security-scoped bookmark; handled in `AppState`/Settings.

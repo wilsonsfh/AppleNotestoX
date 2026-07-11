@@ -32,7 +32,7 @@
 - Modify `Sources/AppleNotestoX/App/AppState.swift` — destination enum, persisted vault bookmark, `runWikiExport()`.
 - Modify `Sources/AppleNotestoX/UI/DestinationPane.swift` — Notion/Wiki switch + vault chooser.
 - Modify `Sources/AppleNotestoX/UI/ContentView.swift` — toolbar action label/gating in Wiki mode.
-- Create tests: `WikiNamingTests.swift`, `MarkdownRendererTests.swift`, `WikiExportAssemblerTests.swift` (+ Glints fixture).
+- Create tests: `WikiNamingTests.swift`, `MarkdownRendererTests.swift`, `WikiExportAssemblerTests.swift` (+ screenshot-heavy acceptance-note fixture).
 
 ---
 
@@ -76,7 +76,7 @@ import XCTest
 
 final class WikiNamingTests: XCTestCase {
     func testSlugKebabsAndStrips() {
-        XCTAssertEqual(WikiNaming.slug(from: "Glints Journal — 2026!"), "glints-journal-2026")
+        XCTAssertEqual(WikiNaming.slug(from: "Project Journal — 2026!"), "project-journal-2026")
         XCTAssertEqual(WikiNaming.slug(from: "  Multiple   spaces "), "multiple-spaces")
         XCTAssertEqual(WikiNaming.slug(from: ""), "note")
     }
@@ -88,8 +88,8 @@ final class WikiNamingTests: XCTestCase {
     func testMarkdownAndAssetFilenames() {
         let d = WikiNaming.isoDay(Date(timeIntervalSince1970: 0))
         XCTAssertEqual(WikiNaming.markdownFilename(date: Date(timeIntervalSince1970: 0), slug: "x"), "\(d)-x.md")
-        XCTAssertEqual(WikiNaming.assetFilename(slug: "glints", index: 1, ext: "png"), "glints-01.png")
-        XCTAssertEqual(WikiNaming.assetFilename(slug: "glints", index: 12, ext: "JPG"), "glints-12.jpg")
+        XCTAssertEqual(WikiNaming.assetFilename(slug: "project", index: 1, ext: "png"), "project-01.png")
+        XCTAssertEqual(WikiNaming.assetFilename(slug: "project", index: 12, ext: "JPG"), "project-12.jpg")
     }
     func testUniqueName() {
         XCTAssertEqual(WikiNaming.uniqueName("a.md", existing: []), "a.md")
@@ -97,13 +97,13 @@ final class WikiNamingTests: XCTestCase {
         XCTAssertEqual(WikiNaming.uniqueName("a.md", existing: ["a.md","a-2.md"]), "a-3.md")
     }
     func testFrontmatterContainsKeys() {
-        let fm = WikiNaming.frontmatter(noteID: "x-123", title: "Glints", 
+        let fm = WikiNaming.frontmatter(noteID: "x-123", title: "Project Journal",
                                         modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 0))
         XCTAssertTrue(fm.hasPrefix("---\n"))
         XCTAssertTrue(fm.contains("origin: user-stated"))
         XCTAssertTrue(fm.contains("source_app: apple-notes"))
         XCTAssertTrue(fm.contains("apple_note_id: x-123"))
-        XCTAssertTrue(fm.contains("title: Glints"))
+        XCTAssertTrue(fm.contains("title: Project Journal"))
         XCTAssertTrue(fm.contains("Provenance:"))
     }
 }
@@ -199,7 +199,7 @@ git commit -m "feat(wiki): naming + provenance frontmatter helpers"
 enum MarkdownRenderer {
     struct Output: Equatable { var markdown: String; var warnings: [String] }
     /// `inlineAsset(id)` returns the full inline markdown for an image placeholder
-    /// (e.g. "![[glints-01.png]]" or "[doc.pdf](raw/assets/doc.pdf)"), or nil → missing-image warning.
+    /// (e.g. "![[project-01.png]]" or "[doc.pdf](raw/assets/doc.pdf)"), or nil → missing-image warning.
     static func render(_ blocks: [NotionBlock], inlineAsset: (UUID) -> String?) -> Output
 }
 ```
@@ -241,8 +241,8 @@ final class MarkdownRendererTests: XCTestCase {
     func testImagePlaceholderEmbedAndMissing() {
         let id = UUID()
         let ok = MarkdownRenderer.render([.imagePlaceholder(id: id, localPath: URL(fileURLWithPath: "/tmp/x"))],
-                                         inlineAsset: { $0 == id ? "![[glints-01.png]]" : nil })
-        XCTAssertEqual(ok.markdown, "![[glints-01.png]]\n")
+                                         inlineAsset: { $0 == id ? "![[project-01.png]]" : nil })
+        XCTAssertEqual(ok.markdown, "![[project-01.png]]\n")
         XCTAssertTrue(ok.warnings.isEmpty)
 
         let missing = MarkdownRenderer.render([.imagePlaceholder(id: UUID(), localPath: URL(fileURLWithPath: "/tmp/x"))],
@@ -455,7 +455,7 @@ final class WikiExportAssemblerTests: XCTestCase {
         let content = AppleNoteContent(html: html, attachments: [a1, a2])
         let cfg = WikiVaultConfig(vaultURL: tmp.appendingPathComponent("vault"))
         let r = try WikiExportAssembler().assemble(
-            noteID: "n1", title: "Glints Journal", modified: Date(timeIntervalSince1970: 0),
+            noteID: "n1", title: "Project Journal", modified: Date(timeIntervalSince1970: 0),
             content: content, config: cfg, exported: Date(timeIntervalSince1970: 0))
 
         XCTAssertEqual(r.imageCount, 2)
@@ -463,14 +463,14 @@ final class WikiExportAssemblerTests: XCTestCase {
         let md = try String(contentsOf: r.markdownPath, encoding: .utf8)
         // order: Intro, embed1, Middle, embed2, End
         let iIntro = md.range(of: "Intro")!.lowerBound
-        let iImg1  = md.range(of: "glints-journal-01.png")!.lowerBound
+        let iImg1  = md.range(of: "project-journal-01.png")!.lowerBound
         let iMid   = md.range(of: "Middle")!.lowerBound
-        let iImg2  = md.range(of: "glints-journal-02.png")!.lowerBound
+        let iImg2  = md.range(of: "project-journal-02.png")!.lowerBound
         let iEnd   = md.range(of: "End")!.lowerBound
         XCTAssertTrue(iIntro < iImg1 && iImg1 < iMid && iMid < iImg2 && iImg2 < iEnd)
         XCTAssertTrue(md.hasPrefix("---\n"))                       // frontmatter
         XCTAssertTrue(md.contains("apple_note_id: n1"))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: cfg.assetsDir.appendingPathComponent("glints-journal-01.png").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cfg.assetsDir.appendingPathComponent("project-journal-01.png").path))
     }
 
     func testMoreAttachmentsThanImagesGoUnplaced() throws {
@@ -810,7 +810,7 @@ git commit -m "feat(wiki): GUI destination switch, vault chooser, export action"
 
 ---
 
-## Task 8: Full verification + Glints acceptance
+## Task 8: Full verification + screenshot-heavy acceptance note
 
 - [ ] **Step 1: Full test suite**
 
@@ -821,8 +821,8 @@ Expected: all tests PASS (existing + new). Fix any regressions before proceeding
 
 1. `swift run AppleNotestoX` (or open in Xcode).
 2. Switch destination to **Wiki**; choose vault `~/Projects/Personal_LLM_Wiki`.
-3. Select the **Glints** note; click **Export to wiki**.
-4. Verify `raw/journal/<date>-glints-*.md` exists with provenance frontmatter; screenshots in `raw/assets/`.
+3. Select the **Project Journal** screenshot-heavy acceptance note; click **Export to wiki**.
+4. Verify `raw/journal/<date>-project-journal*.md` exists with provenance frontmatter; screenshots in `raw/assets/`.
 5. Open the vault in Obsidian; confirm each screenshot sits beside the correct paragraph; check any `> [!warning]` callouts.
 6. In opencode, ask the wiki to **ingest** the new file (existing `Personal_LLM_Wiki` workflow).
 

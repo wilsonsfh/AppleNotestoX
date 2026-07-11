@@ -21,9 +21,9 @@ final class TranscriptDocumentTests: XCTestCase {
             modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 0))
 
         XCTAssertTrue(md.hasPrefix("---\n"))
-        XCTAssertTrue(md.contains("origin: transcribed"))
-        XCTAssertTrue(md.contains("source_type: video-transcript"))
-        XCTAssertTrue(md.contains("engine: apple-speech (on-device)"))
+        XCTAssertTrue(md.contains(#"origin: "transcribed""#))
+        XCTAssertTrue(md.contains(#"source_type: "video-transcript""#))
+        XCTAssertTrue(md.contains(#"engine: "apple-speech (on-device)""#))
         XCTAssertTrue(md.contains("MACHINE-TRANSCRIBED"))
         XCTAssertTrue(md.contains("**[0:00]** Hello there."))
         XCTAssertTrue(md.contains("**[1:00]** Second chunk."))
@@ -34,6 +34,27 @@ final class TranscriptDocumentTests: XCTestCase {
         let kf2 = md.range(of: "vid-kf-02.png")!.lowerBound
         let seg2 = md.range(of: "Second chunk.")!.lowerBound
         XCTAssertTrue(kf2 < seg2, "keyframe@60 should precede second segment")
+    }
+
+    func testMarkdownQuotesUnsafeFrontmatterStrings() {
+        let md = TranscriptDocument.markdown(
+            transcript: VideoTranscript(
+                segments: [],
+                engine: "engine: local\nnext",
+                durationSeconds: 1
+            ),
+            keyframes: [],
+            title: "Title: \"unsafe\"",
+            sourceName: "video: one.mov",
+            sourceApp: "yes",
+            modified: Date(timeIntervalSince1970: 0),
+            exported: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertTrue(md.contains(#"source_app: "yes""#))
+        XCTAssertTrue(md.contains(#"engine: "engine: local\nnext""#))
+        XCTAssertTrue(md.contains(#"source_video: "video: one.mov""#))
+        XCTAssertTrue(md.contains(#"title: "Title: \"unsafe\"""#))
     }
 
     func testEmptyTranscriptStillProducesNote() {

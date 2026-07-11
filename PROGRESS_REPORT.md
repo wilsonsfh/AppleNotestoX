@@ -10,10 +10,11 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 | **Wiki Studio — Pass 1 (Study core + Synthesis backlog)** | ✅ shipped to `main` (`b75f665`…`8c413d7`); `swift build` green + logic run-verified (11 checks) + launch smoke (Study default, no crash); XCTest committed (run under Xcode). Spec/plan/mocks in `docs/`. |
 | **Bugfix: Apple Notes reader launch-deadlock (osascript pipe drain) + faster date parse** | ✅ shipped to `main` (`2898d3a`); `swift build` green + run-verified (deadlock repro/fix + parser equivalence); XCTest committed (run under Xcode) |
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |
-| **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual Glints acceptance** |
+| **P1: Apple Notes → LLM-Wiki bridge (markdown + assets, positions preserved)** | 🟡 code complete + build green + logic run-verified; **pending `swift test` under Xcode + manual screenshot-heavy acceptance-note check** |
+| **Search + editorial workspace UI** | 🟡 `swift build`, standalone search/action-state/AppState harnesses, synthetic 900×600 and 1100×700 screenshots, and final code/design reviews green; **XCTest requires Xcode, and macOS TCC/Assistive Access blocked headed VoiceOver + keyboard automation** |
 | **P2: video as a source (transcribe + keyframes → raw/)** | 🟡 code complete + build green + pure logic run-verified + Info.plist section verified; **pending real-video runtime test (Speech permission) under Xcode** |
 | **P3: multi-modal review/study layer** | 🟡 code complete + all JS parses + generator/SM-2/data-layer run-verified; **pending browser runtime test (UI + TTS)** |
-| **Notion → wiki importer (`tools/notion-import.mjs`)** | 🟡 pure blocks→markdown converter run-verified (12 checks) + `--help` ok; **live Notion API path NOT fact-checked (per request) — verify on first run with your token** |
+| **Notion → wiki importer (`tools/notion-import.mjs`)** | 🟡 syntax + help green; 103 passing Node tests cover security/download/publication/YAML safety, while a separate 12-check harness covers block/rich-text/page conversion; **live Notion API path remains pending** |
 
 ## Completed
 
@@ -41,7 +42,7 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 - **Verification:** `swift build` ✅ exit 0; pure logic (StudyData.parse ranking, SynthesisBacklog
   pending/split/prompt, RepoPaths.firstExisting) ✅ run-verified via standalone harness (11 assertions);
   launch smoke ✅ (opens in Study mode, no crash, main thread healthy); `node` resolves at
-  `/opt/homebrew/bin/node`; `generate.mjs` regenerates real vault (55 concepts / 96 cards / 284 edges).
+  `/opt/homebrew/bin/node`; `generate.mjs` regenerates configured vault study data successfully.
 - **Remaining gates:** run `swift test` under Xcode/CI (adds `RepoPathsTests`, `StudyDataParseTests`,
   `StudyDataServiceTests`, `SynthesisBacklogTests`); manual click-through — Refresh regenerates + counts
   update, Launch opens the review app, backlog lists the pending notes + Copy prompt works, Capture
@@ -81,13 +82,15 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
   `raw/journal/` as provenance-stamped markdown + downloaded images in `raw/assets/`, so
   opencode can ingest them — the "intuitive Notion path" (parallels the Apple Notes export).
 - **UX:** token resolves from `--token` → `$NOTION_TOKEN` → the **AppleNotestoX app's
-  Keychain entry** → prompt; lists accessible pages and lets you pick interactively
-  (`1,3` or `all`), or `--page`/`--all`/`--list`.
+  Keychain entry**; if none is available, the command exits with setup guidance. Keychain is
+  preferred to avoid shell history. The importer lists accessible pages and supports interactive
+  page selection (`1,3` or `all`), or `--page`/`--all`/`--list`.
 - **Converter:** Notion blocks → markdown (headings, nested lists, to-dos, quote, callout,
   code, image, divider, bookmark, table rows) with rich-text annotations + links.
 - **Files:** `tools/notion-import.mjs`. **Branch:** `feat/notion-import`.
-- **Verification:** `node --check` ✅; `--help` dry-run ✅; pure converter + `richTextToMd`
-  + `pageTitle` + nesting/image/order — 12 assertions run-verified via harness ✅.
+- **Current verification:** `node --check` ✅; `--help` dry-run ✅; 103 passing Node tests cover
+  security/download/publication/YAML safety; a separate 12-check harness covers blocks,
+  `richTextToMd`, `pageTitle`, nesting, images, and order ✅.
 - **Important caveat:** the **live Notion API calls** (`/search`, `/blocks/*/children`,
   image download) were built from stable API knowledge (`Notion-Version: 2022-06-28`) and
   **NOT live-fact-checked** (per request). Verify on first run: create an integration at
@@ -110,15 +113,15 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 - **Design tools:** Figma MCP / Mobbin / MagicPath / MagicPatterns are paid and **not
   connected** in this environment → applied `frontend-design` principles directly,
   benchmarked to Airfoil/Linear/Stripe. Not a Cloudflare app, so Kumo not used.
-- **Verification:** `node --check` on all 10 JS files ✅; generator run on real
-  `Personal_LLM_Wiki` → 15 concepts / 15 cards / 58 edges / 0 orphans ✅; SM-2 engine
+- **Verification:** `node --check` on all 10 JS files ✅; generator run against the
+  configured default vault with no orphaned links ✅; SM-2 engine
   (math + EF floor + lapse reset + persistence + streak) run-verified via `node`/`vm` ✅;
   data-layer integration with the sample (indexing, neighbors, edge/card integrity,
   partition) run-verified ✅.
 - **Remaining gates (browser, test machine):** open `review/index.html` (or `python3 -m
   http.server -d review`) — run a flashcard session, explore the map, play a recap (TTS
   needs a click to start, esp. Safari). Then `node review/generate.mjs --vault <vault>`
-  to study your real wiki.
+  to study the selected vault.
 - **Out of scope (later):** multi-device SR sync, in-app card authoring, real video export.
 
 ### 2026-06-29 — P2: Video as a source (on-device transcription + keyframes)
@@ -175,7 +178,7 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
   - XCTest suites are written and committed, ready to run under Xcode/CI.
 - **Remaining gates (not yet done):**
   1. Run `swift test` once Xcode is installed (or in CI) to exercise the committed XCTest suites.
-  2. Manual acceptance on a machine with Notes Automation permission: export the real
-     **Glints** note, open the vault in Obsidian, confirm screenshots sit beside the
+  2. Manual acceptance on a machine with Notes Automation permission: export a
+     **screenshot-heavy acceptance note**, open the vault in Obsidian, confirm screenshots sit beside the
      correct paragraphs, then run the `Personal_LLM_Wiki` ingest.
 - **Not merged / not pushed:** lives on the feature branch; no git remote configured.

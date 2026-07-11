@@ -1,6 +1,17 @@
 import SwiftUI
 import AppKit
+import Accessibility
 import UniformTypeIdentifiers
+
+@MainActor
+func pickVaultDirectory() -> URL? {
+    let panel = NSOpenPanel()
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = false
+    panel.allowsMultipleSelection = false
+    panel.prompt = "Choose"
+    return panel.runModal() == .OK ? panel.url : nil
+}
 
 struct DestinationPane: View {
     @Environment(AppState.self) private var state
@@ -11,15 +22,19 @@ struct DestinationPane: View {
         @Bindable var state = state
 
         VStack(alignment: .leading, spacing: 0) {
-            Picker("", selection: $state.exportDestination) {
-                Text("Notion").tag(AppState.ExportDestination.notion)
-                Text("Wiki").tag(AppState.ExportDestination.wiki)
+            VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                WorkspaceSectionLabel("Send to")
+                Picker("Destination", selection: $state.exportDestination) {
+                    Label("Personal Wiki", systemImage: "books.vertical")
+                        .tag(AppState.ExportDestination.wiki)
+                    Label("Notion", systemImage: "square.grid.2x2")
+                        .tag(AppState.ExportDestination.notion)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.horizontal, WorkspaceStyle.spacing16)
+            .padding(.vertical, WorkspaceStyle.spacing12)
 
             switch state.exportDestination {
             case .notion: notionPane
@@ -48,14 +63,30 @@ struct DestinationPane: View {
 
     @ViewBuilder private var notionPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Notion").font(.headline)
-                if let ws = state.workspaceName {
-                    Text("· \(ws)").foregroundStyle(.secondary).font(.caption)
+            HStack(spacing: WorkspaceStyle.spacing8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notion")
+                        .font(.title3.weight(.semibold))
+                        .lineLimit(1)
+                    if let ws = state.workspaceName {
+                        Text(ws)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
-                Spacer()
+                .layoutPriority(1)
+                Spacer(minLength: WorkspaceStyle.spacing8)
                 if state.loadingNotion {
-                    ProgressView().controlSize(.small)
+                    HStack(spacing: WorkspaceStyle.spacing4) {
+                        ProgressView().controlSize(.small)
+                        Text("Loading…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Loading Notion")
                 }
                 if state.selectedNotionPageID != nil {
                     Button {
@@ -67,31 +98,46 @@ struct DestinationPane: View {
                     .controlSize(.small)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, WorkspaceStyle.spacing16)
+            .padding(.vertical, WorkspaceStyle.spacing12)
 
             Divider()
 
             if state.token.isEmpty {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "key.horizontal").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("Add your Notion integration token in Settings.")
+                WorkspaceEmptyState(
+                    systemImage: "key.horizontal",
+                    title: "No Integration Token",
+                    message: "Add your Notion integration token in Settings."
+                )
+            } else if state.loadingNotion && state.notionRoots.isEmpty {
+                VStack(spacing: WorkspaceStyle.spacing8) {
+                    ProgressView()
+                        .controlSize(.regular)
+                        .accessibilityHidden(true)
+                    Text("Loading Notion")
+                        .font(.title3.weight(.semibold))
+                    Text("Fetching your pages…")
+                        .font(.callout)
                         .foregroundStyle(.secondary)
-                }
-                Spacer()
-            } else if state.notionRoots.isEmpty {
-                Spacer()
-                VStack(spacing: 8) {
-                    Text("No pages shared with this integration yet.")
-                        .foregroundStyle(.secondary)
-                    Text("In Notion: open a page → Connect to integration → select your integration.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        .frame(maxWidth: 360)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(WorkspaceStyle.spacing24)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Loading Notion. Fetching your pages.")
+            } else if !state.loadingNotion && state.workspaceName == nil && !state.token.isEmpty {
+                WorkspaceEmptyState(
+                    systemImage: "exclamationmark.triangle",
+                    title: "Workspace Unavailable",
+                    message: "Notion could not be reached. Check your integration token in Settings and reload."
+                )
+            } else if state.notionRoots.isEmpty {
+                WorkspaceEmptyState(
+                    systemImage: "square.grid.2x2",
+                    title: "No Pages Shared",
+                    message: "No pages shared with this integration yet.\nIn Notion: open a page → Connect to integration → select your integration."
+                )
             } else {
                 List {
                     ForEach(state.notionRoots) { root in
@@ -101,64 +147,62 @@ struct DestinationPane: View {
                 .listStyle(.sidebar)
             }
         }
+        .onChange(of: state.loadingNotion) { wasLoading, isLoading in
+            guard wasLoading, !isLoading, !state.token.isEmpty else { return }
+            AccessibilityNotification.Announcement("Notion update finished").post()
+        }
     }
 
     // MARK: - Wiki
 
     @ViewBuilder private var wikiPane: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("LLM Wiki").font(.headline)
-                Spacer()
+        ScrollView {
+            VStack(alignment: .leading, spacing: WorkspaceStyle.spacing12) {
+                VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                    WorkspaceSectionLabel("Personal Wiki")
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                        let vaultPath = state.vaultURL?.path ?? "No vault chosen"
+                        Text(vaultPath)
+                            .font(.callout)
+                            .foregroundStyle(state.vaultURL == nil ? Color.secondary : Color.primary)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(vaultPath)
+                            .accessibilityLabel(state.vaultURL == nil ? "No vault chosen" : "Vault path: \(vaultPath)")
+                        Button("Choose vault…") {
+                            if let url = pickVaultDirectory() {
+                                state.chooseVault(url)
+                            }
+                        }
+                        Text("Notes land in raw/journal; screenshots and media land in raw/assets.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .workspaceInsetSurface()
+                }
+
+                VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                    WorkspaceSectionLabel("Transcription")
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                        Toggle("Transcribe video attachments", isOn: Binding(
+                            get: { state.transcribeNoteVideos },
+                            set: { state.transcribeNoteVideos = $0 }
+                        ))
+                        .toggleStyle(.checkbox)
+                        Button("Import video…") { chooseVideo() }
+                            .disabled(state.vaultURL == nil || state.isArchiving)
+                        Text("Transcribes on-device (Apple Speech) + extracts keyframes into a transcript note.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .workspaceInsetSurface()
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Vault folder").font(.caption).foregroundStyle(.secondary)
-                Text(state.vaultURL?.path ?? "No vault chosen")
-                    .font(.callout)
-                    .foregroundStyle(state.vaultURL == nil ? Color.secondary : Color.primary)
-                    .textSelection(.enabled)
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                Button("Choose vault…") { chooseVault() }
-                Text("Notes export to raw/journal/ with screenshots in raw/assets/. Then ask opencode to ingest.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Divider().padding(.vertical, 4)
-
-                Text("Video").font(.caption).foregroundStyle(.secondary)
-                Toggle("Transcribe video attachments", isOn: Binding(
-                    get: { state.transcribeNoteVideos },
-                    set: { state.transcribeNoteVideos = $0 }
-                ))
-                .toggleStyle(.checkbox)
-                Button("Import video…") { chooseVideo() }
-                    .disabled(state.vaultURL == nil || state.isArchiving)
-                Text("Transcribes on-device (Apple Speech) + extracts keyframes into a transcript note.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(12)
-
-            Spacer()
-        }
-    }
-
-    private func chooseVault() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
-        if panel.runModal() == .OK, let url = panel.url {
-            state.chooseVault(url)
+            .padding(.horizontal, WorkspaceStyle.spacing16)
+            .padding(.vertical, WorkspaceStyle.spacing12)
         }
     }
 
@@ -178,6 +222,9 @@ struct DestinationPane: View {
 private struct NotionPageRow: View {
     @Environment(AppState.self) private var state
     let page: NotionPage
+    @FocusState private var isFocused: Bool
+
+    private var isSelected: Bool { state.selectedNotionPageID == page.id }
 
     var body: some View {
         DisclosureGroup(
@@ -209,12 +256,29 @@ private struct NotionPageRow: View {
                 Image(systemName: "doc.text.fill").foregroundStyle(.secondary)
                 Text(page.title)
                 Spacer()
-                if state.selectedNotionPageID == page.id {
-                    Image(systemName: "scope").foregroundStyle(.blue)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
                 }
             }
+            .padding(.vertical, WorkspaceStyle.spacing4)
             .contentShape(Rectangle())
             .onTapGesture { state.selectedNotionPageID = page.id }
+            .onKeyPress(.return) {
+                state.selectedNotionPageID = page.id
+                return .handled
+            }
+            .onKeyPress(.space) {
+                state.selectedNotionPageID = page.id
+                return .handled
+            }
+            .focusable()
+            .focused($isFocused)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(page.title)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
     }
 }

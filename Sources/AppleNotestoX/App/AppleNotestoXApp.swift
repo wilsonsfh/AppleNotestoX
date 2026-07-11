@@ -24,5 +24,11 @@ struct AppleNotestoXApp: App {
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 1100, height: 700)
+        .commands {
+            CommandGroup(after: .textEditing) {
+                Button("Find Notes") { state.requestNoteSearch() }
+                    .keyboardShortcut("f", modifiers: .command)
+            }
+        }
     }
 }

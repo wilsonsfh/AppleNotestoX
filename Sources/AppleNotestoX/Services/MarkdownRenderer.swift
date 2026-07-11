@@ -14,7 +14,7 @@ enum MarkdownRenderer {
     }
 
     /// - Parameter inlineAsset: returns the full inline markdown for an image
-    ///   placeholder id (e.g. `"![[glints-01.png]]"` or `"[doc.pdf](raw/assets/doc.pdf)"`),
+    ///   placeholder id (e.g. `"![[project-journal-01.png]]"` or `"[doc.pdf](raw/assets/doc.pdf)"`),
     ///   or `nil` to emit a visible "missing image" warning callout.
     static func render(_ blocks: [NotionBlock], inlineAsset: (UUID) -> String?) -> Output {
         var out = Output()

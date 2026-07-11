@@ -29,8 +29,14 @@ struct WikiExportAssembler: Sendable {
 
         var warnings: [String] = []
         var assetPaths: [URL] = []
+        var createdAssets: [WikiNaming.CreatedFile] = []
+        var committed = false
+        defer {
+            if !committed {
+                for output in createdAssets { WikiNaming.removeIfIdentityMatches(output) }
+            }
+        }
         var inlineByID: [UUID: String] = [:]
-        var usedAssetNames = Set<String>()
         var matchedLocalPaths = Set<URL>()
         var assetIndex = 0
 
@@ -47,10 +53,10 @@ struct WikiExportAssembler: Sendable {
                 slug: slug,
                 index: assetIndex,
                 config: config,
-                usedNames: &usedAssetNames,
                 warnings: &warnings
             ) {
                 assetPaths.append(saved.url)
+                createdAssets.append(saved.createdFile)
                 matchedLocalPaths.insert(attachment.localURL)
                 inlineByID[id] = inlineMarkdown(for: attachment, savedName: saved.name, config: config)
             }
@@ -69,10 +75,10 @@ struct WikiExportAssembler: Sendable {
                 slug: slug,
                 index: assetIndex,
                 config: config,
-                usedNames: &usedAssetNames,
                 warnings: &warnings
             ) {
                 assetPaths.append(saved.url)
+                createdAssets.append(saved.createdFile)
                 unplacedLines.append("- " + inlineMarkdown(for: attachment, savedName: saved.name, config: config))
             }
         }
@@ -87,18 +93,17 @@ struct WikiExportAssembler: Sendable {
             body += "\n## Unplaced attachments\n\n" + unplacedLines.joined(separator: "\n") + "\n"
         }
 
-        // 5. Write, collision-safe, into raw/journal/.
-        let existing = Set((try? fileManager.contentsOfDirectory(atPath: config.journalDir.path)) ?? [])
-        let mdName = WikiNaming.uniqueName(
-            WikiNaming.markdownFilename(date: modified, slug: slug),
-            existing: existing
+        // 5. Publish without replacing any entry created before or during this attempt.
+        let markdownFile = try WikiNaming.publishTracked(
+            data: Data(body.utf8),
+            preferredName: WikiNaming.markdownFilename(date: modified, slug: slug),
+            in: config.journalDir
         )
-        let mdURL = config.journalDir.appendingPathComponent(mdName)
-        try body.write(to: mdURL, atomically: true, encoding: .utf8)
+        committed = true
 
         let imageCount = assetPaths.filter { Self.imageExts.contains($0.pathExtension.lowercased()) }.count
         return WikiExportResult(
-            markdownPath: mdURL,
+            markdownPath: markdownFile.url,
             assetPaths: assetPaths,
             imageCount: imageCount,
             warnings: warnings
@@ -112,20 +117,17 @@ struct WikiExportAssembler: Sendable {
         slug: String,
         index: Int,
         config: WikiVaultConfig,
-        usedNames: inout Set<String>,
         warnings: inout [String]
-    ) -> (name: String, url: URL)? {
+    ) -> (name: String, url: URL, createdFile: WikiNaming.CreatedFile)? {
         let ext = attachment.localURL.pathExtension
-        var name = WikiNaming.assetFilename(slug: slug, index: index, ext: ext)
-        name = WikiNaming.uniqueName(name, existing: usedNames)
-        usedNames.insert(name)
-        let dest = config.assetsDir.appendingPathComponent(name)
+        let preferredName = WikiNaming.assetFilename(slug: slug, index: index, ext: ext)
         do {
-            if fileManager.fileExists(atPath: dest.path) {
-                try fileManager.removeItem(at: dest)
-            }
-            try fileManager.copyItem(at: attachment.localURL, to: dest)
-            return (name, dest)
+            let createdFile = try WikiNaming.copyTracked(
+                source: attachment.localURL,
+                preferredName: preferredName,
+                to: config.assetsDir
+            )
+            return (createdFile.url.lastPathComponent, createdFile.url, createdFile)
         } catch {
             warnings.append("failed to copy asset \(attachment.filename): \(error.localizedDescription)")
             return nil
