@@ -18,6 +18,26 @@ Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 
 ## Completed
 
+### 2026-07-12 — Public searchable editorial wiki workflow
+- **What:** shipped title/folder search with Command-F, native keyboard-selectable note/page rows,
+  a persistent Personal Wiki action footer, isolated note/video progress channels, single-flight
+  export guards, and the whole-app **Editorial Split Desk** SwiftUI redesign.
+- **Safety:** hardened Swift and Node publication paths with collision-safe no-clobber writes,
+  identity-aware rollback, YAML quoting, coordinator-owned temporary cleanup, bounded public-only
+  Notion image downloads, response cancellation, raster signature checks, and synthetic demo data.
+- **Public repository:** <https://github.com/wilsonsfh/AppleNotestoX> is public on default branch
+  `main`; release commit `c653f3c49bb7cb8bf75485e71178ec6c6e1a3d68`, authored and committed by
+  `wilsonsfh <74759808+wilsonsfh@users.noreply.github.com>`.
+- **Docs:** root `README.md` covers motivation, benefits, architecture, design choices, trade-offs,
+  tech stack, setup, workflows, privacy, specifications, verification, limitations, and learnings.
+- **Verification:** `swift build` passed; 103 Notion importer security tests passed; six Swift safety
+  harnesses plus search/action-state/AppState harnesses passed; review JavaScript syntax passed;
+  staged diff and secret/history scans were clean; synthetic Study/Capture/Notion/Settings/Preview
+  screenshots passed final visual review; staged release review returned **READY**.
+- **Remaining external gates:** run XCTest under Xcode/CI; manually accept real Notes export,
+  Speech/video, live Notion API/signed images, browser TTS, light mode, and headed VoiceOver/keyboard
+  behavior. macOS Assistive Access blocked automation with TCC error `-25211`.
+
 ### 2026-06-30 — Wiki Studio Pass 1: Study core + Synthesis backlog
 - **What:** Reframe toward a study-first hub centered on `Personal_LLM_Wiki`. A **Study | Capture**
   mode switch defaults to **Study**, where the wiki is the hero: big `concepts · cards` counts, a
