@@ -5,6 +5,15 @@ clone on Command Line Tools alone, and the remaining items are manual acceptance
 a human at a Mac (see [Verification, Status, and Limitations](#verification-status-and-limitations)).
 No further feature work is planned.
 
+## Status
+
+**Last reviewed: 2026-08-11 — Done — maintenance only**
+
+- Feature work complete. `make check` re-run this review: build green, 103 node tests passing.
+- Clean-clone portability shipped in `1cd694f` (Makefile entry points, `bin/doctor`, runtime `review/` resolution, no personal default vault path).
+- Outstanding items are manual acceptance gates only: a human at a Mac granting Automation and Speech permissions, and `swift test` under full Xcode.
+- Public on `github.com/wilsonsfh/AppleNotestoX`, default branch `main`, in sync.
+
 AppleNotestoX is a macOS app for turning Apple Notes into durable, reviewable knowledge. It exports selected notes to a local Personal Wiki or Notion, preserves inline media placement, can ingest video as an on-device transcript with keyframes, and pairs the resulting wiki with a static study app.
 
 The project is local-first by default: capture writes provenance-stamped source material to disk, while interpretation and cross-linking remain a separate, LLM-owned synthesis step.
