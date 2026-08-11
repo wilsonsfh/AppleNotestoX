@@ -1,5 +1,10 @@
 # AppleNotestoX
 
+**Status: complete.** Every planned capability is built, the app builds and runs from a clean
+clone on Command Line Tools alone, and the remaining items are manual acceptance gates that need
+a human at a Mac (see [Verification, Status, and Limitations](#verification-status-and-limitations)).
+No further feature work is planned.
+
 AppleNotestoX is a macOS app for turning Apple Notes into durable, reviewable knowledge. It exports selected notes to a local Personal Wiki or Notion, preserves inline media placement, can ingest video as an on-device transcript with keyframes, and pairs the resulting wiki with a static study app.
 
 The project is local-first by default: capture writes provenance-stamped source material to disk, while interpretation and cross-linking remain a separate, LLM-owned synthesis step.
@@ -114,22 +119,55 @@ The SwiftUI app coordinates work through observable `AppState` and actor-backed 
 
 ## Build and Run
 
-Clone the repository, then build and launch the executable:
+Everything below works with **Xcode Command Line Tools only**. Full Xcode is needed for one
+thing and one thing only: the `swift test` gate.
 
 ```bash
 git clone https://github.com/wilsonsfh/AppleNotestoX.git
 cd AppleNotestoX
-swift build
-swift run AppleNotestoX
+make doctor    # checks macOS, toolchain, node, and reports what is missing
+make run       # builds, then launches the app
 ```
 
-On first Notes access, grant Automation permission. If it was denied, enable **AppleNotestoX > Notes** in System Settings and reload the app.
+`make` is a thin wrapper; the underlying commands are still `swift build` and
+`swift run AppleNotestoX` if you prefer them directly. `make help` lists every target.
 
-Run the Swift test suite with an Xcode-selected toolchain:
+On first Notes access, grant Automation permission. If it was denied, enable
+**AppleNotestoX > Notes** in System Settings and reload the app. Video transcription
+additionally prompts for Speech Recognition on first use.
+
+### Configuration
+
+No configuration is required to build or launch. These knobs exist when you need them:
+
+| Knob | How to set | Needed for |
+|---|---|---|
+| Personal Wiki vault | Folder picker in the app (Capture footer) | Exporting notes |
+| `APPLENOTESTOX_VAULT` | Environment variable, or `--vault` on either node tool | `review/generate.mjs`, `tools/notion-import.mjs` |
+| `APPLENOTESTOX_REVIEW_DIR` | Environment variable | Only if the binary runs outside its checkout |
+| Review folder override | App Settings | Same, set from the UI instead |
+| Notion token | App Settings (stored in the macOS Keychain), or `NOTION_TOKEN` | Notion workflows |
+
+The node tools have **no default vault path**. Pass `--vault` or set `APPLENOTESTOX_VAULT`;
+they exit with guidance rather than guessing at a path that will not exist on your machine.
+
+### Running from outside the checkout
+
+The app resolves `review/` at runtime — override, then `APPLENOTESTOX_REVIEW_DIR`, then
+next to the executable, then the working directory, and only then the source checkout. If
+you copy the built binary elsewhere, either keep `review/` beside it or point
+`APPLENOTESTOX_REVIEW_DIR` at the folder.
+
+### Tests
 
 ```bash
-swift test
+make check     # build + node tool gates; works on Command Line Tools
+swift test     # the 18 XCTest suites; requires full Xcode
 ```
+
+`make check` is the gate that runs anywhere. `swift test` needs full Xcode, because
+Command Line Tools ships neither `XCTest` nor swift-testing — see
+[Verification, Status, and Limitations](#verification-status-and-limitations).
 
 ## Apple Notes to Personal Wiki
 

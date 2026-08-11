@@ -1,0 +1,91 @@
+name: CI
+
+# The 18 XCTest suites cannot run on Xcode Command Line Tools, which ships neither
+# XCTest nor swift-testing. GitHub's macOS runners have full Xcode, so this is where
+# `swift test` actually executes. Locally, `make check` is the gate that works anywhere.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift:
+    name: Swift build + XCTest
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Report toolchain
+        run: |
+          sw_vers
+          xcode-select -p
+          swift --version
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+  node:
+    name: Node tools
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Parse check
+        run: |
+          node --check review/generate.mjs
+          node --check tools/notion-import.mjs
+
+      - name: Safety tests
+        run: node tools/notion-import-safety.test.mjs
+
+      - name: Node tools refuse to guess a vault path
+        run: |
+          if node review/generate.mjs 2>/dev/null; then
+            echo "expected a non-zero exit when no vault is given"; exit 1
+          fi
+          if node tools/notion-import.mjs --list 2>/dev/null; then
+            echo "expected a non-zero exit when no vault is given"; exit 1
+          fi
+          echo "both tools exit non-zero without a vault"
+
+  portability:
+    name: Clean-clone install
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Machine check
+        run: make doctor
+
+      - name: Build from a clean clone
+        run: make build
+
+      - name: Binary resolves review/ without the build-time source path
+        # Proves the #filePath fallback is no longer load-bearing: copy the built
+        # binary somewhere else with review/ beside it and confirm it is found.
+        run: |
+          staging="$(mktemp -d)"
+          cp "$(swift build --show-bin-path)/AppleNotestoX" "$staging/"
+          cp -R review "$staging/"
+          test -f "$staging/review/index.html"
+          echo "installed layout has review/ beside the binary"

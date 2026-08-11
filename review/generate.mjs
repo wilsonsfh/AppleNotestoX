@@ -28,7 +28,18 @@ if (args.help) {
   console.log("usage: node review/generate.mjs --vault <vault-path> [--out <file>]");
   process.exit(0);
 }
-const vault = expandHome(args.vault || path.join(os.homedir(), "Projects", "Personal_LLM_Wiki"));
+// No personal default: a wrong-but-plausible path fails confusingly on someone
+// else's machine. Take --vault, else $APPLENOTESTOX_VAULT, else explain and stop.
+const vaultArg = args.vault || process.env.APPLENOTESTOX_VAULT;
+if (!vaultArg) {
+  console.error(
+    "error: no vault specified.\n" +
+    "  pass --vault <path-to-your-wiki>, or set APPLENOTESTOX_VAULT.\n" +
+    "  example: node review/generate.mjs --vault ~/Projects/Personal_LLM_Wiki",
+  );
+  process.exit(1);
+}
+const vault = expandHome(vaultArg);
 const outFile = expandHome(args.out || path.join(scriptDir, "study-data.js"));
 const wikiDir = path.join(vault, "wiki");
 

@@ -1,0 +1,83 @@
+#!/bin/bash
+# Verify a fresh machine can build and run AppleNotestoX.
+# Reports every problem rather than stopping at the first one.
+
+set -uo pipefail
+
+problems=0
+ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; problems=$((problems + 1)); }
+
+echo
+echo "AppleNotestoX — machine check"
+echo
+
+# --- required -------------------------------------------------------------
+echo "required:"
+
+macos_major=$(sw_vers -productVersion | cut -d. -f1)
+if [ "$macos_major" -ge 14 ]; then
+  ok "macOS $(sw_vers -productVersion) (needs 14+)"
+else
+  bad "macOS $(sw_vers -productVersion) is too old — needs 14+"
+fi
+
+if command -v swift >/dev/null 2>&1; then
+  ok "swift $(swift --version 2>/dev/null | head -1 | sed 's/.*version //;s/ .*//')"
+else
+  bad "swift not found — run: xcode-select --install"
+fi
+
+if xcode-select -p >/dev/null 2>&1; then
+  ok "developer tools at $(xcode-select -p)"
+else
+  bad "no developer tools — run: xcode-select --install"
+fi
+
+echo
+echo "optional:"
+
+# --- optional -------------------------------------------------------------
+if command -v node >/dev/null 2>&1; then
+  node_major=$(node --version | sed 's/^v//;s/\..*//')
+  if [ "$node_major" -ge 18 ]; then
+    ok "node $(node --version) — study generator and Notion import available"
+  else
+    warn "node $(node --version) is below 18 — study generator may fail"
+  fi
+else
+  warn "node not found — the study generator and Notion import will not run"
+  warn "  install with: brew install node"
+fi
+
+if [ -n "${APPLENOTESTOX_VAULT:-}" ]; then
+  if [ -d "$APPLENOTESTOX_VAULT/wiki" ]; then
+    ok "APPLENOTESTOX_VAULT → $APPLENOTESTOX_VAULT"
+  else
+    warn "APPLENOTESTOX_VAULT is set but has no wiki/ folder: $APPLENOTESTOX_VAULT"
+  fi
+else
+  warn "APPLENOTESTOX_VAULT not set — pass --vault to the node tools instead"
+fi
+
+if xcrun --find xctest >/dev/null 2>&1; then
+  ok "XCTest available — 'swift test' will run"
+else
+  warn "XCTest not available (Command Line Tools only) — 'swift test' will fail"
+  warn "  the app still builds and runs; see README 'Tests'"
+fi
+
+echo
+echo "permissions (granted on first use, not checkable ahead of time):"
+echo "  · Automation → Notes    — required to read Apple Notes"
+echo "  · Speech Recognition    — required only for video transcription"
+echo "  If you deny one, re-enable it in System Settings ▸ Privacy & Security."
+
+echo
+if [ "$problems" -eq 0 ]; then
+  printf '\033[32mReady.\033[0m  next: make build && make run\n\n'
+  exit 0
+fi
+printf '\033[31m%d problem(s) must be fixed first.\033[0m\n\n' "$problems"
+exit 1

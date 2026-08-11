@@ -3,10 +3,19 @@
 Living log of shipped changes (newest at top). See `docs/superpowers/specs/` and
 `docs/superpowers/plans/` for the design/plan behind each item.
 
+## Project status: COMPLETE
+
+Feature work is done. The app builds and launches from a clean `git clone` using Xcode
+Command Line Tools alone (`make doctor && make run`). What remains is not development — it
+is manual acceptance that requires a human at a Mac with the relevant permissions granted,
+plus the `swift test` gate that needs full Xcode. Those are tracked below and are not
+blocking anything.
+
 ## Status at a glance
 
 | Capability | Status |
 |---|---|
+| **Portability — clean-clone install on a fresh Mac** | ✅ shipped; `make doctor` machine check, `make build/run/study/notion/check` entry points, runtime `review/` resolution (override → env → executable → cwd → source), no personal default vault path in either node tool. `make check` green: build + 103 node tests. |
 | **Wiki Studio — Pass 1 (Study core + Synthesis backlog)** | ✅ shipped to `main` (`b75f665`…`8c413d7`); `swift build` green + logic run-verified (11 checks) + launch smoke (Study default, no crash); XCTest committed (run under Xcode). Spec/plan/mocks in `docs/`. |
 | **Bugfix: Apple Notes reader launch-deadlock (osascript pipe drain) + faster date parse** | ✅ shipped to `main` (`2898d3a`); `swift build` green + run-verified (deadlock repro/fix + parser equivalence); XCTest committed (run under Xcode) |
 | Apple Notes → Notion export (original feature) | ✅ shipped (pre-existing) |

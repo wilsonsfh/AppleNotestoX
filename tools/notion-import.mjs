@@ -713,7 +713,17 @@ async function main() {
       "Prefer Keychain to keep the token out of shell history; if none is available, the command exits with setup guidance.");
     return;
   }
-  opts.vault = expandHome(opts.vault) || path.join(os.homedir(), "Projects", "Personal_LLM_Wiki");
+  // No personal default — see review/generate.mjs for the same reasoning.
+  const vaultArg = opts.vault || process.env.APPLENOTESTOX_VAULT;
+  if (!vaultArg) {
+    console.error(
+      "error: no vault specified.\n" +
+      "  pass --vault <path-to-your-wiki>, or set APPLENOTESTOX_VAULT.\n" +
+      "  example: node tools/notion-import.mjs --vault ~/Projects/Personal_LLM_Wiki --list",
+    );
+    process.exit(1);
+  }
+  opts.vault = expandHome(vaultArg);
   if (!fs.existsSync(opts.vault)) { console.error("error: vault not found: " + opts.vault); process.exit(1); }
 
   const token = resolveToken(opts.token);

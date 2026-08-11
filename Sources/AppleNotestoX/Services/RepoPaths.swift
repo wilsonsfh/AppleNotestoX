@@ -1,11 +1,17 @@
 import Foundation
 
 /// Resolves paths to the bundled-alongside `review/` tooling and the `node` binary.
-/// The repo root is derived from this source file's compile-time path (`#filePath`);
-/// a UserDefaults override (`review_folder_override`) wins when set — useful if the
-/// app is ever run from outside the checkout.
+///
+/// Resolution is **runtime-first** so an installed binary keeps working after it is
+/// copied off the build machine. `#filePath` is only the last resort, because it bakes
+/// in the *build* machine's absolute source path.
+///
+/// Order: UserDefaults override → `APPLENOTESTOX_REVIEW_DIR` env → next to the running
+/// executable → walking up from the executable (SwiftPM `.build/<config>/` layout) →
+/// current working directory → `#filePath` (source checkout).
 enum RepoPaths {
     static let reviewFolderOverrideKey = "review_folder_override"
+    static let reviewDirEnvKey = "APPLENOTESTOX_REVIEW_DIR"
 
     /// First path in `paths` that exists on disk, as a file URL.
     static func firstExisting(_ paths: [String], fileManager: FileManager = .default) -> URL? {
@@ -15,8 +21,14 @@ enum RepoPaths {
         return nil
     }
 
+    /// A directory only counts as the review folder if it actually holds the tooling.
+    static func isReviewDir(_ url: URL, fileManager: FileManager = .default) -> Bool {
+        fileManager.fileExists(atPath: url.appendingPathComponent("index.html").path)
+    }
+
     /// repo root = <root>/Sources/AppleNotestoX/Services/RepoPaths.swift → up 4.
-    private static func repoRoot() -> URL {
+    /// Build-time path; valid only on the machine that compiled the binary.
+    private static func sourceCheckoutRoot() -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()   // Services
             .deletingLastPathComponent()   // AppleNotestoX
@@ -24,11 +36,44 @@ enum RepoPaths {
             .deletingLastPathComponent()   // repo root
     }
 
-    static func reviewDir() -> URL {
+    /// Candidate review directories, most explicit first.
+    static func reviewDirCandidates(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        executableURL: URL? = Bundle.main.executableURL,
+        currentDirectory: String = FileManager.default.currentDirectoryPath
+    ) -> [URL] {
+        var candidates: [URL] = []
+
         if let override = UserDefaults.standard.string(forKey: reviewFolderOverrideKey), !override.isEmpty {
-            return URL(fileURLWithPath: (override as NSString).expandingTildeInPath, isDirectory: true)
+            candidates.append(URL(fileURLWithPath: (override as NSString).expandingTildeInPath, isDirectory: true))
         }
-        return repoRoot().appendingPathComponent("review", isDirectory: true)
+        if let fromEnv = environment[reviewDirEnvKey], !fromEnv.isEmpty {
+            candidates.append(URL(fileURLWithPath: (fromEnv as NSString).expandingTildeInPath, isDirectory: true))
+        }
+        if let executableURL {
+            // Alongside the binary (an installed layout), then walk up far enough to
+            // escape `.build/arm64-apple-macosx/debug/` back to a checkout root.
+            var dir = executableURL.deletingLastPathComponent()
+            for _ in 0..<5 {
+                candidates.append(dir.appendingPathComponent("review", isDirectory: true))
+                dir = dir.deletingLastPathComponent()
+            }
+        }
+        candidates.append(URL(fileURLWithPath: currentDirectory, isDirectory: true)
+            .appendingPathComponent("review", isDirectory: true))
+        candidates.append(sourceCheckoutRoot().appendingPathComponent("review", isDirectory: true))
+
+        return candidates
+    }
+
+    static func reviewDir() -> URL {
+        let candidates = reviewDirCandidates()
+        // An explicit override is honoured even if it is not populated yet, so the user
+        // sees their own path in errors rather than a silently different fallback.
+        if let override = UserDefaults.standard.string(forKey: reviewFolderOverrideKey), !override.isEmpty {
+            return candidates[0]
+        }
+        return candidates.first(where: { isReviewDir($0) }) ?? candidates[candidates.count - 1]
     }
 
     static func generateScript() -> URL { reviewDir().appendingPathComponent("generate.mjs") }
