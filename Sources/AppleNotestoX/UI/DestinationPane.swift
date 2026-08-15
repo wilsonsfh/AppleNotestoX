@@ -29,6 +29,8 @@ struct DestinationPane: View {
                         .tag(AppState.ExportDestination.wiki)
                     Label("Notion", systemImage: "square.grid.2x2")
                         .tag(AppState.ExportDestination.notion)
+                    Label("Merge to Note", systemImage: "square.stack.3d.up")
+                        .tag(AppState.ExportDestination.mergeToNote)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -39,7 +41,7 @@ struct DestinationPane: View {
             switch state.exportDestination {
             case .notion: notionPane
             case .wiki: wikiPane
-            case .mergeToNote: EmptyView()
+            case .mergeToNote: mergePane
             }
         }
         .sheet(isPresented: $showCreatePage) {
@@ -204,6 +206,55 @@ struct DestinationPane: View {
             }
             .padding(.horizontal, WorkspaceStyle.spacing16)
             .padding(.vertical, WorkspaceStyle.spacing12)
+        }
+    }
+
+    // MARK: - Merge to Note
+
+    @ViewBuilder private var mergePane: some View {
+        @Bindable var state = state
+        ScrollView {
+            VStack(alignment: .leading, spacing: WorkspaceStyle.spacing12) {
+                VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                    WorkspaceSectionLabel("Merge to Note")
+                    VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
+                        Text("\(state.selectedNoteIDs.count) note\(state.selectedNoteIDs.count == 1 ? "" : "s") selected")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        if state.groqAPIKey.isEmpty {
+                            WorkspaceEmptyState(
+                                systemImage: "key.horizontal",
+                                title: "No Groq API Key",
+                                message: "Add your Groq API key in Settings."
+                            )
+                        } else {
+                            Button {
+                                Task { await state.startMergePreview() }
+                            } label: {
+                                Text(state.isMerging ? "Categorizing\u{2026}" : "Preview & Merge\u{2026}")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(state.isMerging || state.selectedNoteIDs.isEmpty)
+                        }
+                        Text("Writes one new note into Apple Notes with LLM-chosen sections. Originals are left untouched.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .workspaceInsetSurface()
+                }
+            }
+            .padding(.horizontal, WorkspaceStyle.spacing16)
+            .padding(.vertical, WorkspaceStyle.spacing12)
+        }
+        .sheet(isPresented: Binding(
+            get: {
+                if case .readyForPreview = state.mergeStage { return true }
+                return false
+            },
+            set: { shown in if !shown { Task { await state.cancelMerge() } } }
+        )) {
+            MergePreviewSheet()
         }
     }
 
