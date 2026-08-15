@@ -71,6 +71,10 @@ actor AppleNotesService {
         _ = try await runScript(Self.deleteScript, args: [id])
     }
 
+    func createNote(bodyHTML: String) async throws -> String {
+        try await runScript(Self.createScript, args: [bodyHTML])
+    }
+
     // MARK: - Process
 
     private func runScript(_ source: String, args: [String] = []) async throws -> String {
@@ -269,6 +273,16 @@ actor AppleNotesService {
             delete (note id noteID)
         end tell
         return "OK"
+    end run
+    """#
+
+    private static let createScript = #"""
+    on run argv
+        set bodyHTML to item 1 of argv
+        tell application "Notes"
+            set theNote to make new note with properties {body:bodyHTML}
+        end tell
+        return (id of theNote) as string
     end run
     """#
 }
