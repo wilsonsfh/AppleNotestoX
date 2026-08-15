@@ -7,3 +7,4 @@ DerivedData/
 
 # Generated from a vault by review/generate.mjs (personal content)
 review/study-data.js
+.worktrees/
