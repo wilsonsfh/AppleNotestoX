@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MergePreviewSheet: View {
     @Environment(AppState.self) private var state
-    @Environment(\.dismiss) private var dismiss
+    /// Cached so the sheet keeps rendering the draft while `mergeStage` is
+    /// `.writing` (that stage carries no draft of its own).
+    @State private var shownDraft: MergeDraft?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -51,15 +53,14 @@ struct MergePreviewSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") {
+                    // `cancelMerge` clears `showMergePreview`, which dismisses
+                    // the sheet — no explicit `dismiss()` needed.
                     Task { await state.cancelMerge() }
-                    dismiss()
                 }
                 .keyboardShortcut(.escape)
+                .disabled(isWriting)
                 Button {
-                    Task {
-                        await state.confirmMerge()
-                        dismiss()
-                    }
+                    Task { await state.confirmMerge() }
                 } label: {
                     Text(isWriting ? "Creating\u{2026}" : "Create in Apple Notes")
                 }
@@ -70,12 +71,18 @@ struct MergePreviewSheet: View {
             .workspaceFooterSurface()
         }
         .frame(width: 520, height: 480)
+        .onAppear { shownDraft = pendingDraft }
+        .onChange(of: pendingDraft) { _, new in
+            if let new { shownDraft = new }
+        }
     }
 
-    private var draft: MergeDraft? {
+    private var pendingDraft: MergeDraft? {
         if case .readyForPreview(let d) = state.mergeStage { return d }
         return nil
     }
+
+    private var draft: MergeDraft? { shownDraft }
 
     private var isWriting: Bool {
         if case .writing = state.mergeStage { return true }

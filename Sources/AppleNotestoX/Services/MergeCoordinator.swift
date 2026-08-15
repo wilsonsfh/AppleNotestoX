@@ -72,7 +72,9 @@ actor MergeCoordinator {
             for attachment in content.attachments {
                 let staged = try await assets.stage(
                     fileAt: attachment.localURL,
-                    filename: "\(noteID)-\(attachment.filename)",
+                    filename: TriageAssetStore.sanitizedPathComponent(noteID)
+                        + "-"
+                        + TriageAssetStore.sanitizedPathComponent(attachment.filename),
                     into: runDirectory
                 )
                 images.append(StagedImage(sourceNoteID: noteID, sourceNoteTitle: title, localURL: staged))
@@ -92,7 +94,8 @@ actor MergeCoordinator {
             sections: sections,
             titleLine: titleLine,
             stagedImages: stagedImages,
-            embedImages: embedImagesSupported
+            embedImages: embedImagesSupported,
+            runDirectory: runDirectory
         )
 
         succeeded = true
@@ -106,7 +109,16 @@ actor MergeCoordinator {
     }
 
     func write(draft: MergeDraft) async throws -> String {
-        let noteID = try await notes.createNote(bodyHTML: draft.bodyHTML)
+        let noteID: String
+        do {
+            noteID = try await notes.createNote(bodyHTML: draft.bodyHTML)
+        } catch {
+            // Nothing references the staged files once the write fails, so
+            // clean up rather than leaking the run directory — same rule as
+            // `buildDraft`'s failure path.
+            await assets.deleteRunDirectory(draft.runDirectory)
+            throw error
+        }
         // When images were embedded inline, the staged copies are no longer
         // needed once the note exists. When embedding was unsupported, the
         // merged note's text only references these files by path — they are

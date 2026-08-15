@@ -236,6 +236,11 @@ struct DestinationPane: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(state.isMerging || state.selectedNoteIDs.isEmpty)
                         }
+                        if case .completed = state.mergeStage {
+                            Label("Merged note created in Apple Notes", systemImage: "checkmark.circle")
+                                .font(.callout)
+                                .foregroundStyle(.green)
+                        }
                         Text("Writes one new note into Apple Notes with LLM-chosen sections. Originals are left untouched.")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
@@ -247,13 +252,14 @@ struct DestinationPane: View {
             .padding(.horizontal, WorkspaceStyle.spacing16)
             .padding(.vertical, WorkspaceStyle.spacing12)
         }
-        .sheet(isPresented: Binding(
-            get: {
-                if case .readyForPreview = state.mergeStage { return true }
-                return false
-            },
-            set: { shown in if !shown { Task { await state.cancelMerge() } } }
-        )) {
+        .sheet(isPresented: $state.showMergePreview) {
+            // Only a real user dismissal (swipe/Esc while the draft is still
+            // pending) should discard the draft — `confirmMerge` closes the
+            // sheet itself once the stage has moved past `.readyForPreview`.
+            if case .readyForPreview = state.mergeStage {
+                Task { await state.cancelMerge() }
+            }
+        } content: {
             MergePreviewSheet()
         }
     }

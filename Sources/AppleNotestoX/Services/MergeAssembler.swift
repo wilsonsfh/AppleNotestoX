@@ -14,7 +14,8 @@ enum MergeAssembler {
         sections: [MergeSection],
         titleLine: String,
         stagedImages: [String: [StagedImage]],
-        embedImages: Bool
+        embedImages: Bool,
+        runDirectory: URL? = nil
     ) -> String {
         var html = "<div>\(escape(titleLine))</div>"
         for section in sections {
@@ -26,10 +27,14 @@ enum MergeAssembler {
                     if embedImages {
                         html += "<img src=\"file://\(image.localURL.path)\">"
                     } else {
-                        html += "<p>[image from &quot;\(escape(image.sourceNoteTitle))&quot; — staged at \(image.localURL.path)]</p>"
+                        html += "<p>[image from &quot;\(escape(image.sourceNoteTitle))&quot; — staged at \(escape(image.localURL.path))]</p>"
                     }
                 }
             }
+        }
+        // Fallback path: images live only on disk, so point at the folder.
+        if !embedImages, !stagedImages.isEmpty, let runDirectory {
+            html += "<p>Images for this merge are staged at \(escape(runDirectory.path))</p>"
         }
         return html
     }

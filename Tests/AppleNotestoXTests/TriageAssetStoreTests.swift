@@ -36,6 +36,30 @@ final class TriageAssetStoreTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: staged, encoding: .utf8), "hello")
     }
 
+    func test_stage_sanitizedCoreDataStyleNoteID_roundTrips() async throws {
+        let root = makeTempRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = TriageAssetStore(root: root)
+        let runDir = try await store.makeRunDirectory()
+
+        let sourceFile = root.appendingPathComponent("source.png")
+        try "png".data(using: .utf8)!.write(to: sourceFile)
+
+        let noteID = "x-coredata://ABC-DEF/ICNote/p123"
+        let attachmentName = "photo/one:two.png"
+        let filename = TriageAssetStore.sanitizedPathComponent(noteID)
+            + "-"
+            + TriageAssetStore.sanitizedPathComponent(attachmentName)
+
+        XCTAssertFalse(filename.contains("/"))
+        XCTAssertFalse(filename.contains(":"))
+
+        let staged = try await store.stage(fileAt: sourceFile, filename: filename, into: runDir)
+
+        XCTAssertEqual(staged.deletingLastPathComponent().path, runDir.path)
+        XCTAssertEqual(try String(contentsOf: staged, encoding: .utf8), "png")
+    }
+
     func test_deleteRunDirectory_removesIt() async throws {
         let root = makeTempRoot()
         defer { try? FileManager.default.removeItem(at: root) }

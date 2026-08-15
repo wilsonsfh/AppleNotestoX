@@ -48,6 +48,9 @@ final class AppState {
     var groqAPIKey: String = ""
     var mergeStage: MergeStage? = nil
     var isMerging = false
+    /// Drives the merge preview sheet explicitly, so the sheet's own dismissal
+    /// can't be confused with a user cancel when `mergeStage` moves on.
+    var showMergePreview = false
 
     var canStartWikiExport: Bool { !isArchiving && !isExportingToWiki }
 
@@ -325,10 +328,14 @@ final class AppState {
         guard !selectedNoteIDs.isEmpty, !groqAPIKey.isEmpty, let h = hierarchy, !isMerging else { return }
         isMerging = true
         mergeStage = nil
+        showMergePreview = false
         let job = MergeJob(noteIDs: Array(selectedNoteIDs))
         let stream = mergeCoordinator.run(job: job, hierarchy: h)
         for await stage in stream {
             mergeStage = stage
+            if case .readyForPreview = stage {
+                showMergePreview = true
+            }
             if case .failed(let message) = stage {
                 errorMessage = message
             }
@@ -342,15 +349,18 @@ final class AppState {
         do {
             let noteID = try await mergeCoordinator.write(draft: draft)
             mergeStage = .completed(noteID: noteID)
+            showMergePreview = false
             selectedNoteIDs.removeAll()
             await loadAppleHierarchy()
         } catch {
             errorMessage = error.localizedDescription
             mergeStage = .failed(message: error.localizedDescription)
+            showMergePreview = false
         }
     }
 
     func cancelMerge() async {
+        showMergePreview = false
         if case .readyForPreview(let draft) = mergeStage {
             await mergeCoordinator.discard(draft: draft)
         }

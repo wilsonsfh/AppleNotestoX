@@ -20,6 +20,16 @@ actor TriageAssetStore {
         return appSupport.appendingPathComponent("AppleNotestoX/TriageAssets", isDirectory: true)
     }
 
+    /// Makes one string safe to use as a single path component. Apple Notes
+    /// note IDs are Core Data URIs (`x-coredata://<uuid>/ICNote/p123`) and
+    /// attachment names come straight from Notes, so both can contain `/` and
+    /// `:` — which `appendingPathComponent` does not escape.
+    nonisolated static func sanitizedPathComponent(_ raw: String) -> String {
+        let unsafe = CharacterSet(charactersIn: "/:\\\0")
+        let cleaned = String(raw.unicodeScalars.map { unsafe.contains($0) ? "_" : Character($0) })
+        return cleaned.isEmpty ? "_" : cleaned
+    }
+
     func makeRunDirectory() throws -> URL {
         let dir = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
