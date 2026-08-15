@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: String = ""
     @State private var reviewDraft: String = UserDefaults.standard.string(forKey: RepoPaths.reviewFolderOverrideKey) ?? ""
+    @State private var groqDraft: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,6 +32,22 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Notion")
+                }
+
+                Section {
+                    Text("Create a free API key at console.groq.com/keys. The key stays in macOS Keychain.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    LabeledContent("API key") {
+                        SecureField("gsk_...", text: $groqDraft)
+                            .onAppear { groqDraft = state.groqAPIKey }
+                    }
+                    Button("Save Groq key") {
+                        Task { await state.saveGroqKey(groqDraft.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                    }
+                    .disabled(groqDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } header: {
+                    Text("Groq (Merge to Note)")
                 }
 
                 Section {
