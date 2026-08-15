@@ -36,13 +36,18 @@ final class AppState {
     var isArchiving = false
 
     // Wiki export
-    enum ExportDestination: String, Sendable { case notion, wiki }
+    enum ExportDestination: String, Sendable { case notion, wiki, mergeToNote }
     var exportDestination: ExportDestination = .wiki
     var vaultURL: URL? = nil
     var wikiProgress: [WikiExportProgress] = []
     var videoProgress: [WikiExportProgress] = []
     var isExportingToWiki = false
     var transcribeNoteVideos = false
+
+    // Merge to Note
+    var groqAPIKey: String = ""
+    var mergeStage: MergeStage? = nil
+    var isMerging = false
 
     var canStartWikiExport: Bool { !isArchiving && !isExportingToWiki }
 
@@ -62,6 +67,8 @@ final class AppState {
     let coordinator: ArchiveCoordinator
     let wikiCoordinator: WikiExportCoordinator
     let videoCoordinator: VideoIngestCoordinator
+    let groq: GroqService
+    let mergeCoordinator: MergeCoordinator
 
     private let keychain = Keychain(service: "com.applenotestox.app")
     private let vaultBookmarkKey = "wiki_vault_bookmark"
@@ -78,6 +85,9 @@ final class AppState {
         self.coordinator = ArchiveCoordinator(notes: a, notion: n, images: i, log: l)
         self.wikiCoordinator = WikiExportCoordinator(notes: a)
         self.videoCoordinator = VideoIngestCoordinator()
+        let g = GroqService()
+        self.groq = g
+        self.mergeCoordinator = MergeCoordinator(notes: a, groq: g)
         restoreVaultBookmark()
     }
 
@@ -87,6 +97,10 @@ final class AppState {
         if let t = try? keychain.get("notion_token") {
             token = t
             await notion.setToken(t)
+        }
+        if let g = try? keychain.get("groq_api_key") {
+            groqAPIKey = g
+            await groq.setAPIKey(g)
         }
         await refreshArchivedSet()
         await loadAppleHierarchy()
@@ -112,6 +126,12 @@ final class AppState {
         notionRoots = []
         notionChildren = [:]
         selectedNotionPageID = nil
+    }
+
+    func saveGroqKey(_ key: String) async {
+        groqAPIKey = key
+        try? keychain.set(key, key: "groq_api_key")
+        await groq.setAPIKey(key)
     }
 
     // MARK: - Apple Notes
@@ -297,6 +317,44 @@ final class AppState {
         } catch {
             videoProgress = [WikiExportProgress(id: id, title: url.lastPathComponent, status: .failed(message: error.localizedDescription))]
         }
+    }
+
+    // MARK: - Merge to Note
+
+    func startMergePreview() async {
+        guard !selectedNoteIDs.isEmpty, !groqAPIKey.isEmpty, let h = hierarchy, !isMerging else { return }
+        isMerging = true
+        mergeStage = nil
+        let job = MergeJob(noteIDs: Array(selectedNoteIDs))
+        let stream = mergeCoordinator.run(job: job, hierarchy: h)
+        for await stage in stream {
+            mergeStage = stage
+            if case .failed(let message) = stage {
+                errorMessage = message
+            }
+        }
+        isMerging = false
+    }
+
+    func confirmMerge() async {
+        guard case .readyForPreview(let draft) = mergeStage else { return }
+        mergeStage = .writing
+        do {
+            let noteID = try await mergeCoordinator.write(draft: draft)
+            mergeStage = .completed(noteID: noteID)
+            selectedNoteIDs.removeAll()
+            await loadAppleHierarchy()
+        } catch {
+            errorMessage = error.localizedDescription
+            mergeStage = .failed(message: error.localizedDescription)
+        }
+    }
+
+    func cancelMerge() async {
+        if case .readyForPreview(let draft) = mergeStage {
+            await mergeCoordinator.discard(draft: draft)
+        }
+        mergeStage = nil
     }
 
     // MARK: - Study + backlog

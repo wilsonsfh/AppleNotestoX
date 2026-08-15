@@ -39,6 +39,7 @@ struct DestinationPane: View {
             switch state.exportDestination {
             case .notion: notionPane
             case .wiki: wikiPane
+            case .mergeToNote: EmptyView()
             }
         }
         .sheet(isPresented: $showCreatePage) {
