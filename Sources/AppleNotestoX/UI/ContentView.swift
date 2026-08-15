@@ -18,7 +18,7 @@ struct ContentView: View {
             ToolbarItem(placement: .navigation) {
                 Picker("Mode", selection: $state.appMode) {
                     Text("Study").tag(AppState.AppMode.study)
-                    Text("Capture").tag(AppState.AppMode.capture)
+                    Text("Transfer/Transform").tag(AppState.AppMode.capture)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
