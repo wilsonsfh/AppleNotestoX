@@ -69,7 +69,32 @@ final class PersonalWikiActionStateTests: XCTestCase {
         XCTAssertEqual(
             PersonalWikiActionState.resolve(
                 selectedCount: 0, hasVault: false, isExporting: false, progress: progress),
-            .completed(done: 1, failed: 1))
+            .completed(done: 1, failed: 1, skipped: 0))
+    }
+
+    func testResolveCompletesCountsSkippedNotesSeparately() {
+        let progress = [
+            makeProgress(id: "one", status: .done(result: makeResult())),
+            makeProgress(id: "two", status: .skipped(reason: "Already exported and unchanged")),
+            makeProgress(id: "three", status: .skipped(reason: "Already exported and unchanged")),
+        ]
+
+        XCTAssertEqual(
+            PersonalWikiActionState.resolve(
+                selectedCount: 0, hasVault: false, isExporting: false, progress: progress),
+            .completed(done: 1, failed: 0, skipped: 2))
+    }
+
+    func testResolveExportingCountsSkippedNotesAsSettledProgress() {
+        let progress = [
+            makeProgress(id: "one", status: .skipped(reason: "Already exported and unchanged")),
+            makeProgress(id: "two", status: .pending)
+        ]
+
+        XCTAssertEqual(
+            PersonalWikiActionState.resolve(
+                selectedCount: 2, hasVault: true, isExporting: true, progress: progress),
+            .exporting(done: 1, total: 2))
     }
 
     private func makeProgress(id: String, status: WikiExportStatus) -> WikiExportProgress {

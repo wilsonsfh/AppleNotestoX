@@ -185,13 +185,9 @@ struct SourcePane: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Exporting \(done) of \(total) notes to Personal Wiki")
-            case .completed(let done, let failed):
+            case .completed(let done, let failed, let skipped):
                 Label {
-                    if failed == 0 {
-                        Text("\(done) \(done == 1 ? "note" : "notes") exported to Personal Wiki")
-                    } else {
-                        Text("\(done) \(done == 1 ? "note" : "notes") exported, \(failed) \(failed == 1 ? "note" : "notes") failed")
-                    }
+                    Text(completedSummary(done: done, failed: failed, skipped: skipped))
                 } icon: {
                     Image(systemName: failed == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(failed == 0 ? Color.green : Color.orange)
@@ -200,6 +196,15 @@ struct SourcePane: View {
             }
         }
         .workspaceFooterSurface()
+    }
+
+    private func completedSummary(done: Int, failed: Int, skipped: Int) -> String {
+        var parts: [String] = []
+        if done > 0 { parts.append("\(done) \(done == 1 ? "note" : "notes") exported") }
+        if skipped > 0 { parts.append("\(skipped) already up to date") }
+        if failed > 0 { parts.append("\(failed) \(failed == 1 ? "note" : "notes") failed") }
+        if parts.isEmpty { return "Nothing to export" }
+        return parts.joined(separator: ", ") + " to Personal Wiki"
     }
 }
 

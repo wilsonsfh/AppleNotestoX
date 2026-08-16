@@ -177,4 +177,38 @@ final class WikiNamingTests: XCTestCase {
         XCTAssertTrue(fm.contains(#"apple_note_id: "id: 1\nnext""#))
         XCTAssertTrue(fm.contains(#"title: "A: title \"quoted\"""#))
     }
+
+    func testParseFrontmatterRoundTripsSimpleValues() {
+        let fm = WikiNaming.frontmatter(
+            noteID: "x-123", title: "Project Journal",
+            modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 86400)
+        )
+
+        let fields = WikiNaming.parseFrontmatter(fm)
+
+        XCTAssertEqual(fields?["apple_note_id"], "x-123")
+        XCTAssertEqual(fields?["title"], "Project Journal")
+        XCTAssertEqual(fields?["note_modified"], "1970-01-01")
+        XCTAssertEqual(fields?["exported"], "1970-01-02")
+        XCTAssertEqual(fields?["source_app"], "apple-notes")
+    }
+
+    func testParseFrontmatterRoundTripsEscapedValues() {
+        let fm = WikiNaming.frontmatter(
+            noteID: "id: 1\nnext",
+            title: "A: title \"quoted\" \\ path",
+            modified: Date(timeIntervalSince1970: 0),
+            exported: Date(timeIntervalSince1970: 0)
+        )
+
+        let fields = WikiNaming.parseFrontmatter(fm)
+
+        XCTAssertEqual(fields?["apple_note_id"], "id: 1\nnext")
+        XCTAssertEqual(fields?["title"], "A: title \"quoted\" \\ path")
+    }
+
+    func testParseFrontmatterReturnsNilForNonFrontmatterContent() {
+        XCTAssertNil(WikiNaming.parseFrontmatter("# Just a heading\n\nSome body text."))
+        XCTAssertNil(WikiNaming.parseFrontmatter(""))
+    }
 }

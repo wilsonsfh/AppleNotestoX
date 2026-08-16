@@ -201,4 +201,52 @@ enum WikiNaming {
 
         """
     }
+
+    /// Parses the `key: "value"` lines between the two `---` markers written
+    /// by `frontmatter(noteID:title:modified:exported:)`, reversing
+    /// `yamlScalar`'s escaping. Returns `nil` when `content` doesn't start
+    /// with a frontmatter block at all (e.g. a foreign file in the vault).
+    static func parseFrontmatter(_ content: String) -> [String: String]? {
+        guard content.hasPrefix("---\n") else { return nil }
+        let afterOpening = content.dropFirst(4)
+        guard let closingRange = afterOpening.range(of: "\n---") else { return nil }
+        let block = afterOpening[afterOpening.startIndex..<closingRange.lowerBound]
+
+        var fields: [String: String] = [:]
+        for line in block.split(separator: "\n", omittingEmptySubsequences: true) {
+            guard let colonIndex = line.firstIndex(of: ":") else { continue }
+            let key = line[line.startIndex..<colonIndex].trimmingCharacters(in: .whitespaces)
+            var value = line[line.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
+            guard value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") else { continue }
+            value.removeFirst()
+            value.removeLast()
+            fields[key] = unescapeYAMLScalar(value)
+        }
+        return fields
+    }
+
+    private static func unescapeYAMLScalar(_ value: String) -> String {
+        var result = ""
+        var iterator = value.makeIterator()
+        while let char = iterator.next() {
+            guard char == "\\" else { result.append(char); continue }
+            guard let next = iterator.next() else { result.append(char); break }
+            switch next {
+            case "\"": result.append("\"")
+            case "\\": result.append("\\")
+            case "n": result.append("\n")
+            case "r": result.append("\r")
+            case "t": result.append("\t")
+            case "u":
+                var hex = ""
+                for _ in 0..<4 { if let h = iterator.next() { hex.append(h) } }
+                if let scalarValue = UInt32(hex, radix: 16), let scalar = Unicode.Scalar(scalarValue) {
+                    result.unicodeScalars.append(scalar)
+                }
+            default:
+                result.append(next)
+            }
+        }
+        return result
+    }
 }

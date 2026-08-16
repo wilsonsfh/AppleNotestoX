@@ -33,6 +33,8 @@ actor WikiExportCoordinator {
 
                 continuation.yield(snapshot())
 
+                let vaultIndex = WikiVaultIndex.scan(journalDir: job.config.journalDir)
+
                 for (idx, noteID) in job.noteIDs.enumerated() {
                     do {
                         try await self.exportOne(
@@ -40,6 +42,7 @@ actor WikiExportCoordinator {
                             noteID: noteID,
                             job: job,
                             hierarchy: hierarchy,
+                            vaultIndex: vaultIndex,
                             update: update
                         )
                     } catch {
@@ -57,16 +60,27 @@ actor WikiExportCoordinator {
         noteID: String,
         job: WikiExportJob,
         hierarchy: AppleNotesHierarchy,
+        vaultIndex: [String: WikiVaultIndex.Entry],
         update: @Sendable (Int, WikiExportStatus) -> Void
     ) async throws {
+        let note = hierarchy.notes[noteID]
+        let title = note?.name ?? "(untitled)"
+        let modified = note?.modifiedAt ?? Date()
+
+        // Dedup check against the vault's existing exports, using the
+        // modified date already in `hierarchy` — no need to fetch the note's
+        // content just to decide it hasn't changed since last time.
+        if let noteModified = note?.modifiedAt,
+           WikiVaultIndex.isUpToDate(noteID: noteID, modified: noteModified, index: vaultIndex) {
+            update(idx, .skipped(reason: "Already exported and unchanged"))
+            return
+        }
+
         update(idx, .fetching)
         let content = try await notes.fetchNote(id: noteID)
         defer { AppleNotesService.cleanupTemporaryAttachments(in: content) }
 
         update(idx, .converting)
-        let note = hierarchy.notes[noteID]
-        let title = note?.name ?? "(untitled)"
-        let modified = note?.modifiedAt ?? Date()
 
         update(idx, .savingAssets(done: 0, total: content.attachments.count))
         let result = try assembler.assemble(

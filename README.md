@@ -47,6 +47,7 @@ AppleNotestoX connects those stages without replacing the tools that already wor
 - Exports selected notes as Markdown to `raw/journal/` and copies screenshots and other attachments to `raw/assets/`.
 - Preserves inline image position where Apple Notes supplies matching attachment placeholders; unmatched files are retained in an **Unplaced attachments** section with warnings.
 - Leaves Apple Notes untouched during Personal Wiki export.
+- Deduplicates re-exports: a note already present in `raw/journal/` with an unchanged modified date is skipped instead of creating a numbered duplicate file; re-run the same selection freely.
 - Includes a persistent **Personal Wiki** footer for choosing a vault, exporting selected notes, and seeing progress or completion state.
 - Exports Apple Notes to a selected Notion page, including uploaded images, with optional post-export leave, move, or delete behavior shown in the preview flow.
 - Imports accessible Notion pages into the same `raw/journal/` and `raw/assets/` contract through `tools/notion-import.mjs`.

@@ -30,6 +30,7 @@ enum WikiExportStatus: Sendable, Equatable {
     case savingAssets(done: Int, total: Int)
     case writing
     case done(result: WikiExportResult)
+    case skipped(reason: String)
     case failed(message: String)
 }
 
