@@ -53,7 +53,7 @@ AppleNotestoX connects those stages without replacing the tools that already wor
 - Imports a video, or optionally processes video attachments in notes, using Apple Speech plus evenly spaced keyframes.
 - Surfaces raw journal files that do not yet have same-named `wiki/sources/` pages and can copy an opencode synthesis prompt.
 - Generates a static review dataset from `wiki/**/*.md` and opens a dependency-free review app with SM-2 flashcards, a force-directed concept map, and Web Speech narrated recaps.
-- Merges selected notes into one new Apple Note: an LLM (Groq/Llama) groups the ticked notes under invented topic headers, a preview shows the grouped result before anything is written, and confirming writes a single new "Merged Notes" note back into Apple Notes while leaving the originals untouched.
+- Merges selected notes into one new Apple Note ("Recategorise Apple Notes"): an LLM groups the ticked notes under invented topic headers, a preview shows the grouped result before anything is written, and confirming writes a single new "Merged Notes" note back into Apple Notes while leaving the originals untouched. Choose Groq/Llama or a GLM gateway (tbtk.asia) as the categorization provider in Settings, each with its own API key.
 
 ## Architecture and Data Flow
 
@@ -270,7 +270,7 @@ Then open `http://localhost:8080`. Flashcard scheduling and streaks stay in that
 | Video | Build, pure video-support/transcript logic, and embedded Speech usage descriptions were verified | Real `.mov` import, Speech permission, and long-video timestamp acceptance remain pending |
 | Review app | JavaScript syntax, generator output, SM-2 behavior, and sample-data integration were verified | Manual browser UI, TTS, and accessibility click-through remains pending |
 | Notion importer | Syntax and help output are verified; 103 passing Node tests cover security, downloads, publication, and YAML safety; a separate 12-check harness covers block, rich-text, and page conversion | Live Notion API calls and signed image downloads remain a first-run integration gate |
-| Merge to Note | `swift build` recorded green; pure-logic harnesses (`PlainTextExtractorTests`, `MergeModelsTests`, `MergeAssemblerTests`, `GroqServiceTests`, `TriageAssetStoreTests`) cover extraction, grouping models, note assembly, and Groq request/response handling | Live Groq API round-trips and writing the merged note into Notes via `AppleNotesService.createNote` remain a first-run manual acceptance gate, pending a real API key and Notes Automation permission |
+| Recategorise Apple Notes | `swift build` recorded green; pure-logic harnesses (`PlainTextExtractorTests`, `MergeModelsTests`, `MergeAssemblerTests`, `GroqServiceTests`, `TriageAssetStoreTests`) cover extraction, grouping models, note assembly, and Groq/GLM request/response handling, including `GroqService.configure(baseURL:model:)` repointing requests to a different OpenAI-compatible endpoint | Live Groq and GLM API round-trips and writing the merged note into Notes via `AppleNotesService.createNote` remain a first-run manual acceptance gate, pending real API keys and Notes Automation permission |
 
 Known limitations include macOS-only capture, best-effort conversion for complex Notes HTML, heuristic filename matching for the synthesis backlog, browser-local review history, no speaker diarization, no remote-video/YouTube ingestion, and no automated LLM synthesis. The repository currently has no license; public source availability does not by itself grant reuse rights.
 

@@ -10,22 +10,35 @@ actor GroqService {
 
         var errorDescription: String? {
             switch self {
-            case .missingKey: return "Groq API key is not set."
-            case .invalidKey: return "Groq rejected the API key (401). Re-check the key."
-            case .http(let code, let msg): return "Groq API \(code): \(msg)"
-            case .decoding(let msg): return "Failed to decode Groq response: \(msg)"
-            case .malformedSections(let msg): return "Groq did not return valid section JSON: \(msg)"
+            case .missingKey: return "API key is not set."
+            case .invalidKey: return "The API key was rejected (401). Re-check the key."
+            case .http(let code, let msg): return "LLM API \(code): \(msg)"
+            case .decoding(let msg): return "Failed to decode LLM response: \(msg)"
+            case .malformedSections(let msg): return "LLM did not return valid section JSON: \(msg)"
             }
         }
     }
 
     private let session: URLSession
-    private let baseURL = URL(string: "https://api.groq.com/openai/v1/")!
-    private let model: String
+    private var baseURL: URL
+    private var model: String
     private var apiKey: String?
 
-    init(session: URLSession = .shared, model: String = "llama-3.3-70b-versatile") {
+    init(
+        session: URLSession = .shared,
+        baseURL: URL = URL(string: "https://api.groq.com/openai/v1/")!,
+        model: String = "llama-3.3-70b-versatile"
+    ) {
         self.session = session
+        self.baseURL = baseURL
+        self.model = model
+    }
+
+    /// Repoints this service at a different OpenAI-compatible chat-completions
+    /// endpoint/model, e.g. switching between Groq and a GLM gateway. Callers
+    /// must set the matching API key via `setAPIKey` after reconfiguring.
+    func configure(baseURL: URL, model: String) {
+        self.baseURL = baseURL
         self.model = model
     }
 

@@ -221,11 +221,11 @@ struct DestinationPane: View {
                         Text("\(state.selectedNoteIDs.count) note\(state.selectedNoteIDs.count == 1 ? "" : "s") selected")
                             .font(.callout)
                             .foregroundStyle(.secondary)
-                        if state.groqAPIKey.isEmpty {
+                        if state.activeLLMAPIKey.isEmpty {
                             WorkspaceEmptyState(
                                 systemImage: "key.horizontal",
-                                title: "No Groq API Key",
-                                message: "Add your Groq API key in Settings."
+                                title: "No \(state.llmProvider.displayName) API Key",
+                                message: "Add your \(state.llmProvider.displayName) API key in Settings."
                             )
                         } else {
                             Button {

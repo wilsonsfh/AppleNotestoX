@@ -157,6 +157,19 @@ final class AppStateSearchTests: XCTestCase {
         XCTAssertTrue(state.selectedNoteIDs.isEmpty)
     }
 
+    @MainActor
+    func testActiveLLMAPIKeyTracksSelectedProvider() {
+        let state = AppState()
+        state.groqAPIKey = "groq-key"
+        state.glmAPIKey = "glm-key"
+
+        state.llmProvider = .groq
+        XCTAssertEqual(state.activeLLMAPIKey, "groq-key")
+
+        state.llmProvider = .glm
+        XCTAssertEqual(state.activeLLMAPIKey, "glm-key")
+    }
+
     private func makeHierarchy() -> AppleNotesHierarchy {
         AppleNotesHierarchy(
             folders: [

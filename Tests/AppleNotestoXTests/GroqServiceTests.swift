@@ -48,6 +48,27 @@ final class GroqServiceTests: XCTestCase {
         XCTAssertEqual(body["model"] as? String, "llama-3.3-70b-versatile")
     }
 
+    func test_configure_repointsBaseURLAndModel_forSubsequentRequests() async throws {
+        let session = makeSession()
+        let groq = GroqService(session: session, model: "llama-3.3-70b-versatile")
+        await groq.setAPIKey("test-key")
+        await groq.configure(baseURL: URL(string: "https://tbtk.asia/v1/")!, model: "glm-5.2")
+
+        let content = #"{"sections":[{"header":"Work","body":"Body text","source_note_ids":["A"]}]}"#
+        MockURLProtocol.handler = { req in
+            let payload = #"{"choices":[{"message":{"content":\#(Self.jsonStringLiteral(content))}}]}"#
+            let resp = HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (resp, Data(payload.utf8))
+        }
+
+        _ = try await groq.categorize(notes: [MergeSourceNote(noteID: "A", title: "T", plainText: "text")])
+
+        let req = MockURLProtocol.captured.last!
+        XCTAssertEqual(req.url?.absoluteString, "https://tbtk.asia/v1/chat/completions")
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: MockURLProtocol.bodyData(from: req)) as? [String: Any])
+        XCTAssertEqual(body["model"] as? String, "glm-5.2")
+    }
+
     func test_categorize_unauthorized_throwsInvalidKey() async {
         let session = makeSession()
         let groq = GroqService(session: session)

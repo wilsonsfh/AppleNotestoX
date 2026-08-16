@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var draft: String = ""
     @State private var reviewDraft: String = UserDefaults.standard.string(forKey: RepoPaths.reviewFolderOverrideKey) ?? ""
     @State private var groqDraft: String = ""
+    @State private var glmDraft: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -35,6 +36,25 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker(
+                        "Provider",
+                        selection: Binding(
+                            get: { state.llmProvider },
+                            set: { state.setLLMProvider($0) }
+                        )
+                    ) {
+                        ForEach(AppState.LLMProvider.allCases) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+                    Text("Whichever provider is selected here is used for every Recategorise Apple Notes run.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Recategorise Apple Notes")
+                }
+
+                Section {
                     Text("Create a free API key at console.groq.com/keys. The key stays in macOS Keychain.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -47,7 +67,23 @@ struct SettingsView: View {
                     }
                     .disabled(groqDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } header: {
-                    Text("Groq (Recategorise Apple Notes)")
+                    Text("Groq")
+                }
+
+                Section {
+                    Text("Use your tbtk.asia key here if Groq's free tier is rate-limited. The key stays in macOS Keychain.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    LabeledContent("API key") {
+                        SecureField("sk-...", text: $glmDraft)
+                            .onAppear { glmDraft = state.glmAPIKey }
+                    }
+                    Button("Save GLM key") {
+                        Task { await state.saveGLMKey(glmDraft.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                    }
+                    .disabled(glmDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } header: {
+                    Text("GLM (tbtk.asia)")
                 }
 
                 Section {

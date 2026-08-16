@@ -45,9 +45,29 @@ final class AppState {
     var transcribeNoteVideos = false
 
     // Merge to Note
+    enum LLMProvider: String, Sendable, CaseIterable, Identifiable {
+        case groq, glm
+        var id: String { rawValue }
+        var displayName: String {
+            switch self {
+            case .groq: return "Groq"
+            case .glm: return "GLM (tbtk.asia)"
+            }
+        }
+    }
+    var llmProvider: LLMProvider = .groq
     var groqAPIKey: String = ""
+    var glmAPIKey: String = ""
     var mergeStage: MergeStage? = nil
     var isMerging = false
+    /// The API key for whichever LLM provider is currently selected — what
+    /// `startMergePreview()` actually needs present before it will run.
+    var activeLLMAPIKey: String {
+        switch llmProvider {
+        case .groq: return groqAPIKey
+        case .glm: return glmAPIKey
+        }
+    }
     /// Drives the merge preview sheet explicitly, so the sheet's own dismissal
     /// can't be confused with a user cancel when `mergeStage` moves on.
     var showMergePreview = false
@@ -75,6 +95,11 @@ final class AppState {
 
     private let keychain = Keychain(service: "com.applenotestox.app")
     private let vaultBookmarkKey = "wiki_vault_bookmark"
+    private let llmProviderDefaultsKey = "llm_provider"
+    private static let groqBaseURL = URL(string: "https://api.groq.com/openai/v1/")!
+    private static let groqModel = "llama-3.3-70b-versatile"
+    private static let glmBaseURL = URL(string: "https://tbtk.asia/v1/")!
+    private static let glmModel = "glm-5.2"
 
     init() {
         let n = NotionService()
@@ -103,7 +128,13 @@ final class AppState {
         }
         if let g = try? keychain.get("groq_api_key") {
             groqAPIKey = g
-            await groq.setAPIKey(g)
+        }
+        if let m = try? keychain.get("glm_api_key") {
+            glmAPIKey = m
+        }
+        if let p = UserDefaults.standard.string(forKey: llmProviderDefaultsKey),
+           let provider = LLMProvider(rawValue: p) {
+            llmProvider = provider
         }
         await refreshArchivedSet()
         await loadAppleHierarchy()
@@ -134,7 +165,16 @@ final class AppState {
     func saveGroqKey(_ key: String) async {
         groqAPIKey = key
         try? keychain.set(key, key: "groq_api_key")
-        await groq.setAPIKey(key)
+    }
+
+    func saveGLMKey(_ key: String) async {
+        glmAPIKey = key
+        try? keychain.set(key, key: "glm_api_key")
+    }
+
+    func setLLMProvider(_ provider: LLMProvider) {
+        llmProvider = provider
+        UserDefaults.standard.set(provider.rawValue, forKey: llmProviderDefaultsKey)
     }
 
     // MARK: - Apple Notes
@@ -340,10 +380,18 @@ final class AppState {
     // MARK: - Merge to Note
 
     func startMergePreview() async {
-        guard !selectedNoteIDs.isEmpty, !groqAPIKey.isEmpty, let h = hierarchy, !isMerging else { return }
+        guard !selectedNoteIDs.isEmpty, !activeLLMAPIKey.isEmpty, let h = hierarchy, !isMerging else { return }
         isMerging = true
         mergeStage = nil
         showMergePreview = false
+        switch llmProvider {
+        case .groq:
+            await groq.configure(baseURL: Self.groqBaseURL, model: Self.groqModel)
+            await groq.setAPIKey(groqAPIKey)
+        case .glm:
+            await groq.configure(baseURL: Self.glmBaseURL, model: Self.glmModel)
+            await groq.setAPIKey(glmAPIKey)
+        }
         let job = MergeJob(noteIDs: Array(selectedNoteIDs))
         let stream = mergeCoordinator.run(job: job, hierarchy: h)
         for await stage in stream {
