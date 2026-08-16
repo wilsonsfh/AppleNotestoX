@@ -69,6 +69,17 @@ final class GroqServiceTests: XCTestCase {
         XCTAssertEqual(body["model"] as? String, "glm-5.2")
     }
 
+    func test_timeoutError_producesActionableMessage() {
+        let err = GroqService.timeoutError(afterSeconds: 180)
+        guard case .http(let code, let message) = err else {
+            XCTFail("expected .http case, got \(err)")
+            return
+        }
+        XCTAssertEqual(code, 0)
+        XCTAssertTrue(message.contains("180s"))
+        XCTAssertTrue(message.contains("fewer notes"))
+    }
+
     func test_categorize_unauthorized_throwsInvalidKey() async {
         let session = makeSession()
         let groq = GroqService(session: session)

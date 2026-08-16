@@ -92,11 +92,20 @@ actor GroqService {
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(body)
+        // Large batches (many selected notes) can take well over the
+        // default 60s URLSession timeout to categorize; give the request
+        // room before giving up.
+        req.timeoutInterval = Self.requestTimeoutSeconds
 
         var attempt = 0
         while true {
             attempt += 1
-            let (data, resp) = try await session.data(for: req)
+            let (data, resp): (Data, URLResponse)
+            do {
+                (data, resp) = try await session.data(for: req)
+            } catch let urlError as URLError where urlError.code == .timedOut {
+                throw Self.timeoutError(afterSeconds: req.timeoutInterval)
+            }
             guard let http = resp as? HTTPURLResponse else { throw GroqError.http(0, "no response") }
             if (200..<300).contains(http.statusCode) {
                 struct ChatResponse: Decodable {
@@ -124,6 +133,12 @@ actor GroqService {
             let msg = String(data: data, encoding: .utf8) ?? ""
             throw GroqError.http(http.statusCode, msg)
         }
+    }
+
+    static let requestTimeoutSeconds: TimeInterval = 180
+
+    static func timeoutError(afterSeconds seconds: TimeInterval) -> GroqError {
+        .http(0, "Request timed out after \(Int(seconds))s — try selecting fewer notes at once, or switch providers in Settings.")
     }
 
     private static func parseSections(from jsonContent: String) -> [MergeSection]? {
