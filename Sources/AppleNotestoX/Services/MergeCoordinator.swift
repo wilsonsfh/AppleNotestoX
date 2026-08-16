@@ -86,7 +86,22 @@ actor MergeCoordinator {
         }
 
         continuation.yield(.categorizing)
-        let sections = try await groq.categorize(notes: sourceNotes)
+        // Large selections are split into request-sized batches so no single
+        // categorization call is big enough to risk timing out; each later
+        // batch is nudged to reuse earlier batches' headers so the merged
+        // result doesn't end up with near-duplicate sections.
+        let noteBatches = MergeBatching.batches(for: sourceNotes)
+        var batchResults: [[MergeSection]] = []
+        var headersSoFar: [String] = []
+        for batch in noteBatches {
+            let batchSections = try await groq.categorize(notes: batch, existingHeaders: headersSoFar)
+            batchResults.append(batchSections)
+            for section in batchSections
+            where !headersSoFar.contains(where: { $0.caseInsensitiveCompare(section.header) == .orderedSame }) {
+                headersSoFar.append(section.header)
+            }
+        }
+        let sections = MergeBatching.mergeBatchResults(batchResults)
 
         continuation.yield(.assembling)
         let titleLine = MergeAssembler.titleLine()

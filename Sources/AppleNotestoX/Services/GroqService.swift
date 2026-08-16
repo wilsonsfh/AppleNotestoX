@@ -46,11 +46,16 @@ actor GroqService {
         self.apiKey = key?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func categorize(notes: [MergeSourceNote]) async throws -> [MergeSection] {
+    /// - Parameter existingHeaders: Section headers already chosen for earlier
+    ///   batches of the same merge run (see `MergeBatching`). When non-empty,
+    ///   the model is asked to reuse one of these verbatim whenever a note
+    ///   fits, so batches merge cleanly instead of producing near-duplicate
+    ///   headers like "Work" and "Work Notes".
+    func categorize(notes: [MergeSourceNote], existingHeaders: [String] = []) async throws -> [MergeSection] {
         guard let apiKey, !apiKey.isEmpty else { throw GroqError.missingKey }
 
         let userContent = notes.map { "### \($0.title) (id: \($0.noteID))\n\($0.plainText)" }.joined(separator: "\n\n")
-        let systemPrompt = """
+        var systemPrompt = """
         You group short personal notes into topic categories. Read all the notes below \
         and invent whatever section headers best group their content — do not use a fixed \
         list. Respond with strict JSON only, matching this shape exactly, no prose, no \
@@ -58,6 +63,14 @@ actor GroqService {
         {"sections":[{"header":"string","body":"string","source_note_ids":["string"]}]}
         Every note id you were given must appear in at least one section's source_note_ids.
         """
+        if !existingHeaders.isEmpty {
+            let headerList = existingHeaders.map { "\"\($0)\"" }.joined(separator: ", ")
+            systemPrompt += """
+            \nThese section headers are already in use by other batches of notes from this \
+            same run — reuse one of them verbatim (exact spelling) whenever a note's content \
+            fits: [\(headerList)]. Only invent a new header when nothing existing fits.
+            """
+        }
 
         let firstAttempt = try await complete(system: systemPrompt, user: userContent)
         if let sections = Self.parseSections(from: firstAttempt) {

@@ -69,6 +69,31 @@ final class GroqServiceTests: XCTestCase {
         XCTAssertEqual(body["model"] as? String, "glm-5.2")
     }
 
+    func test_categorize_withExistingHeaders_includesThemInSystemPrompt() async throws {
+        let session = makeSession()
+        let groq = GroqService(session: session)
+        await groq.setAPIKey("gsk_test")
+
+        let content = #"{"sections":[{"header":"Work","body":"Body","source_note_ids":["A"]}]}"#
+        MockURLProtocol.handler = { req in
+            let payload = #"{"choices":[{"message":{"content":\#(Self.jsonStringLiteral(content))}}]}"#
+            let resp = HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (resp, Data(payload.utf8))
+        }
+
+        _ = try await groq.categorize(
+            notes: [MergeSourceNote(noteID: "A", title: "T", plainText: "text")],
+            existingHeaders: ["Work", "Health"]
+        )
+
+        let req = MockURLProtocol.captured.last!
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: MockURLProtocol.bodyData(from: req)) as? [String: Any])
+        let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+        let systemContent = try XCTUnwrap(messages.first { $0["role"] as? String == "system" }?["content"] as? String)
+        XCTAssertTrue(systemContent.contains("\"Work\""))
+        XCTAssertTrue(systemContent.contains("\"Health\""))
+    }
+
     func test_timeoutError_producesActionableMessage() {
         let err = GroqService.timeoutError(afterSeconds: 180)
         guard case .http(let code, let message) = err else {
