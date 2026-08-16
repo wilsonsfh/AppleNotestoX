@@ -109,6 +109,75 @@ final class AppStateSearchTests: XCTestCase {
         XCTAssertEqual(state.wikiProgress, originalProgress)
     }
 
+    @MainActor
+    func testToggleFolderSelectionSelectsAllNotesInFolderAndSubfolders() {
+        let state = AppState()
+        state.hierarchy = makeHierarchy()
+
+        state.toggleFolderSelection("personal")
+
+        XCTAssertEqual(state.selectedNoteIDs, ["weekly-review", "cafe-plan", "resume"])
+    }
+
+    @MainActor
+    func testToggleFolderSelectionDeselectsWhenFullySelected() {
+        let state = AppState()
+        state.hierarchy = makeHierarchy()
+        state.selectedNoteIDs = ["weekly-review", "cafe-plan", "resume"]
+
+        state.toggleFolderSelection("personal")
+
+        XCTAssertTrue(state.selectedNoteIDs.isEmpty)
+    }
+
+    @MainActor
+    func testToggleFolderSelectionCompletesPartialSelectionRatherThanClearingIt() {
+        let state = AppState()
+        state.hierarchy = makeHierarchy()
+        state.selectedNoteIDs = ["cafe-plan"]
+
+        state.toggleFolderSelection("personal")
+
+        XCTAssertEqual(state.selectedNoteIDs, ["weekly-review", "cafe-plan", "resume"])
+    }
+
+    @MainActor
+    func testToggleFolderSelectionDoesNothingWhileArchivingOrWithoutHierarchy() {
+        let state = AppState()
+        state.hierarchy = makeHierarchy()
+        state.isArchiving = true
+
+        state.toggleFolderSelection("personal")
+        XCTAssertTrue(state.selectedNoteIDs.isEmpty)
+
+        state.isArchiving = false
+        state.hierarchy = nil
+
+        state.toggleFolderSelection("personal")
+        XCTAssertTrue(state.selectedNoteIDs.isEmpty)
+    }
+
+    private func makeHierarchy() -> AppleNotesHierarchy {
+        AppleNotesHierarchy(
+            folders: [
+                "personal": AppleFolder(
+                    id: "personal", name: "Personal", accountName: "iCloud", parentID: nil,
+                    childFolderIDs: ["ideas"], noteIDs: ["weekly-review"]
+                ),
+                "ideas": AppleFolder(
+                    id: "ideas", name: "Ideas", accountName: "iCloud", parentID: "personal",
+                    childFolderIDs: [], noteIDs: ["cafe-plan", "resume"]
+                ),
+            ],
+            notes: [
+                "weekly-review": AppleNote(id: "weekly-review", name: "Weekly Review", folderID: "personal", modifiedAt: Date(timeIntervalSince1970: 0)),
+                "cafe-plan": AppleNote(id: "cafe-plan", name: "Cafe Plan", folderID: "ideas", modifiedAt: Date(timeIntervalSince1970: 0)),
+                "resume": AppleNote(id: "resume", name: "Résumé", folderID: "ideas", modifiedAt: Date(timeIntervalSince1970: 0)),
+            ],
+            rootFolderIDs: ["personal"]
+        )
+    }
+
     private func makeResult() -> WikiExportResult {
         WikiExportResult(
             markdownPath: URL(fileURLWithPath: "/tmp/note.md"),

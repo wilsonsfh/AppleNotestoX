@@ -209,6 +209,19 @@ private struct AppleFolderRow: View {
     let hierarchy: AppleNotesHierarchy
     let depth: Int
 
+    private var allNoteIDs: [String] { hierarchy.allNoteIDs(underFolder: folder.id) }
+
+    private enum SelectionState { case none, some, all }
+
+    private var selectionState: SelectionState {
+        let ids = allNoteIDs
+        guard !ids.isEmpty else { return .none }
+        let selectedCount = ids.count { state.selectedNoteIDs.contains($0) }
+        if selectedCount == 0 { return .none }
+        if selectedCount == ids.count { return .all }
+        return .some
+    }
+
     var body: some View {
         DisclosureGroup(
             isExpanded: Binding(
@@ -226,7 +239,18 @@ private struct AppleFolderRow: View {
                 AppleNoteRow(note: note)
             }
         } label: {
-            HStack {
+            HStack(spacing: 8) {
+                Button {
+                    state.toggleFolderSelection(folder.id)
+                } label: {
+                    Image(systemName: folderCheckboxSymbol)
+                        .foregroundStyle(selectionState == .none ? Color.secondary : Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .disabled(allNoteIDs.isEmpty)
+                .accessibilityLabel(folderAccessibilityLabel)
+                .accessibilityAddTraits(selectionState == .all ? .isSelected : [])
+
                 Image(systemName: "folder")
                     .foregroundStyle(.secondary)
                 Text(folder.name)
@@ -236,6 +260,22 @@ private struct AppleFolderRow: View {
                     Text("\(count)").font(.caption).foregroundStyle(.tertiary)
                 }
             }
+        }
+    }
+
+    private var folderCheckboxSymbol: String {
+        switch selectionState {
+        case .none: return "square"
+        case .some: return "minus.square.fill"
+        case .all: return "checkmark.square.fill"
+        }
+    }
+
+    private var folderAccessibilityLabel: String {
+        switch selectionState {
+        case .none: return "Select all notes in \(folder.name)"
+        case .some: return "Select remaining notes in \(folder.name)"
+        case .all: return "Deselect all notes in \(folder.name)"
         }
     }
 }

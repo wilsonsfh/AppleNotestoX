@@ -150,6 +150,21 @@ final class AppState {
         if selectedNoteIDs.remove(noteID) == nil { selectedNoteIDs.insert(noteID) }
     }
 
+    /// Selects every note in this folder and its subfolders if any are
+    /// currently unselected; deselects all of them only when the whole
+    /// subtree is already fully selected.
+    func toggleFolderSelection(_ folderID: String) {
+        guard !isArchiving, let hierarchy else { return }
+        let ids = hierarchy.allNoteIDs(underFolder: folderID)
+        guard !ids.isEmpty else { return }
+        if !wikiProgress.isEmpty { wikiProgress = [] }
+        if ids.allSatisfy(selectedNoteIDs.contains) {
+            selectedNoteIDs.subtract(ids)
+        } else {
+            selectedNoteIDs.formUnion(ids)
+        }
+    }
+
     func loadAppleHierarchy() async {
         loadingApple = true
         defer { loadingApple = false }
