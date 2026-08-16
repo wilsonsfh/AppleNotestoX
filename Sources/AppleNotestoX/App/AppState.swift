@@ -74,8 +74,17 @@ final class AppState {
 
     var canStartWikiExport: Bool { !isArchiving && !isExportingToWiki }
 
+    // Personal Wiki duplicate cleanup
+    var duplicateGroups: [WikiDuplicateFinder.Group] = []
+    var isScanningDuplicates = false
+    var duplicateScanError: String? = nil
+    /// Files currently checked for removal, by markdown path. Populated with
+    /// every entry except each group's newest (kept) one right after a scan.
+    var selectedDuplicatePaths: Set<URL> = []
+    var isDeletingDuplicates = false
+
     // Study + synthesis (Wiki Studio pass 1)
-    enum AppMode: String, Sendable { case study, capture }
+    enum AppMode: String, Sendable { case study, capture, duplicates }
     var appMode: AppMode = .study
     var studyData: StudyData? = nil
     var isRefreshingStudy = false
@@ -92,6 +101,7 @@ final class AppState {
     let videoCoordinator: VideoIngestCoordinator
     let groq: GroqService
     let mergeCoordinator: MergeCoordinator
+    let vaultMaintenance: WikiVaultMaintenance
 
     private let keychain = Keychain(service: "com.applenotestox.app")
     private let vaultBookmarkKey = "wiki_vault_bookmark"
@@ -116,6 +126,7 @@ final class AppState {
         let g = GroqService()
         self.groq = g
         self.mergeCoordinator = MergeCoordinator(notes: a, groq: g)
+        self.vaultMaintenance = WikiVaultMaintenance()
         restoreVaultBookmark()
     }
 
@@ -428,6 +439,51 @@ final class AppState {
             await mergeCoordinator.discard(draft: draft)
         }
         mergeStage = nil
+    }
+
+    // MARK: - Personal Wiki duplicate cleanup
+
+    func scanForDuplicates() async {
+        guard let vault = vaultURL, !isScanningDuplicates else { return }
+        isScanningDuplicates = true
+        duplicateScanError = nil
+        defer { isScanningDuplicates = false }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+
+        let groups = await vaultMaintenance.findDuplicates(config: WikiVaultConfig(vaultURL: vault))
+        duplicateGroups = groups
+        // Default to keeping each group's newest export and marking the
+        // rest for removal — the user reviews/adjusts before confirming.
+        selectedDuplicatePaths = Set(groups.flatMap { $0.entries.dropFirst().map(\.markdownPath) })
+    }
+
+    func toggleDuplicateSelection(_ path: URL) {
+        if selectedDuplicatePaths.remove(path) == nil {
+            selectedDuplicatePaths.insert(path)
+        }
+    }
+
+    func deleteSelectedDuplicates() async {
+        guard let vault = vaultURL, !selectedDuplicatePaths.isEmpty, !isDeletingDuplicates else { return }
+        isDeletingDuplicates = true
+        defer { isDeletingDuplicates = false }
+        let didAccess = vault.startAccessingSecurityScopedResource()
+        defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
+
+        let config = WikiVaultConfig(vaultURL: vault)
+        let entriesByPath = Dictionary(
+            uniqueKeysWithValues: duplicateGroups.flatMap { $0.entries }.map { ($0.markdownPath, $0) }
+        )
+        for path in selectedDuplicatePaths {
+            guard let entry = entriesByPath[path] else { continue }
+            do {
+                try await vaultMaintenance.delete(entry: entry, config: config)
+            } catch {
+                duplicateScanError = error.localizedDescription
+            }
+        }
+        await scanForDuplicates()
     }
 
     // MARK: - Study + backlog

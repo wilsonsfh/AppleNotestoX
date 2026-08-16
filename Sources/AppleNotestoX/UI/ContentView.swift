@@ -12,6 +12,7 @@ struct ContentView: View {
             switch state.appMode {
             case .study: StudyView()
             case .capture: captureSplit
+            case .duplicates: DuplicatesView()
             }
         }
         .toolbar {
@@ -19,10 +20,11 @@ struct ContentView: View {
                 Picker("Mode", selection: $state.appMode) {
                     Text("Study").tag(AppState.AppMode.study)
                     Text("Transfer/Transform").tag(AppState.AppMode.capture)
+                    Text("Duplicates").tag(AppState.AppMode.duplicates)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(minWidth: 170)
+                .frame(minWidth: 260)
             }
             ToolbarItem(placement: .principal) {
                 if state.isArchiving {

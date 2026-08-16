@@ -26,8 +26,22 @@ final class WikiVaultIndexTests: XCTestCase {
 
         let index = WikiVaultIndex.scan(journalDir: tmp)
 
-        XCTAssertEqual(index["note-A"]?.noteModifiedDay, "1970-01-01")
-        XCTAssertEqual(index["note-A"]?.markdownPath.lastPathComponent, "2026-08-16-cafe-plan.md")
+        XCTAssertEqual(index["note-A"]?.count, 1)
+        XCTAssertEqual(index["note-A"]?.first?.noteModifiedDay, "1970-01-01")
+        XCTAssertEqual(index["note-A"]?.first?.markdownPath.lastPathComponent, "2026-08-16-cafe-plan.md")
+    }
+
+    func test_scan_collectsAllEntriesForADuplicatedNoteID() throws {
+        let fm = WikiNaming.frontmatter(
+            noteID: "note-A", title: "Cafe Plan",
+            modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 0)
+        )
+        try write(fm, filename: "2026-08-16-cafe-plan.md")
+        try write(fm, filename: "2026-08-16-cafe-plan-2.md")
+
+        let index = WikiVaultIndex.scan(journalDir: tmp)
+
+        XCTAssertEqual(index["note-A"]?.count, 2)
     }
 
     func test_scan_ignoresNonMarkdownAndUnparsableFiles() throws {

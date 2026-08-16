@@ -60,7 +60,7 @@ actor WikiExportCoordinator {
         noteID: String,
         job: WikiExportJob,
         hierarchy: AppleNotesHierarchy,
-        vaultIndex: [String: WikiVaultIndex.Entry],
+        vaultIndex: [String: [WikiVaultIndex.Entry]],
         update: @Sendable (Int, WikiExportStatus) -> Void
     ) async throws {
         let note = hierarchy.notes[noteID]
