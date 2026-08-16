@@ -47,7 +47,7 @@ struct SettingsView: View {
                     }
                     .disabled(groqDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } header: {
-                    Text("Groq (Merge to Note)")
+                    Text("Groq (Recategorise Apple Notes)")
                 }
 
                 Section {

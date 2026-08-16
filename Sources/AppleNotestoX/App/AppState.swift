@@ -37,7 +37,7 @@ final class AppState {
 
     // Wiki export
     enum ExportDestination: String, Sendable { case notion, wiki, mergeToNote }
-    var exportDestination: ExportDestination = .wiki
+    var exportDestination: ExportDestination = .mergeToNote
     var vaultURL: URL? = nil
     var wikiProgress: [WikiExportProgress] = []
     var videoProgress: [WikiExportProgress] = []

@@ -3,10 +3,10 @@ import XCTest
 
 final class AppStateSearchTests: XCTestCase {
     @MainActor
-    func testDefaultsToWikiExportDestination() {
+    func testDefaultsToMergeToNoteExportDestination() {
         let state = AppState()
 
-        XCTAssertEqual(state.exportDestination, .wiki)
+        XCTAssertEqual(state.exportDestination, .mergeToNote)
     }
 
     @MainActor

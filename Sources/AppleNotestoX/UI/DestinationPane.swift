@@ -25,12 +25,12 @@ struct DestinationPane: View {
             VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
                 WorkspaceSectionLabel("Send to")
                 Picker("Destination", selection: $state.exportDestination) {
+                    Label("Recategorise Apple Notes", systemImage: "square.stack.3d.up")
+                        .tag(AppState.ExportDestination.mergeToNote)
                     Label("Personal Wiki", systemImage: "books.vertical")
                         .tag(AppState.ExportDestination.wiki)
                     Label("Notion", systemImage: "square.grid.2x2")
                         .tag(AppState.ExportDestination.notion)
-                    Label("Merge to Note", systemImage: "square.stack.3d.up")
-                        .tag(AppState.ExportDestination.mergeToNote)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -216,7 +216,7 @@ struct DestinationPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: WorkspaceStyle.spacing12) {
                 VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
-                    WorkspaceSectionLabel("Merge to Note")
+                    WorkspaceSectionLabel("Recategorise Apple Notes")
                     VStack(alignment: .leading, spacing: WorkspaceStyle.spacing8) {
                         Text("\(state.selectedNoteIDs.count) note\(state.selectedNoteIDs.count == 1 ? "" : "s") selected")
                             .font(.callout)
