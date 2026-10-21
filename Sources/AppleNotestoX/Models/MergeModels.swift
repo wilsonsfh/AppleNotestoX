@@ -18,18 +18,10 @@ struct MergeSection: Sendable, Equatable, Codable {
     }
 }
 
-struct StagedImage: Sendable, Equatable {
-    let sourceNoteID: String
-    let sourceNoteTitle: String
-    let localURL: URL
-}
-
 struct MergeDraft: Sendable, Equatable {
     let titleLine: String
     let sections: [MergeSection]
     let bodyHTML: String
-    let runDirectory: URL
-    let imagesEmbedded: Bool
 }
 
 struct MergeJob: Sendable {

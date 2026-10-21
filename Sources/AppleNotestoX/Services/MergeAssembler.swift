@@ -10,33 +10,46 @@ enum MergeAssembler {
         return "Merged Notes — \(formatter.string(from: date))"
     }
 
+    /// - Parameter sourceNoteTitles: maps each merged note's id to its
+    ///   original title, so every section can list which notes fed it.
     static func assembleHTML(
         sections: [MergeSection],
         titleLine: String,
-        stagedImages: [String: [StagedImage]],
-        embedImages: Bool,
-        runDirectory: URL? = nil
+        sourceNoteTitles: [String: String]
     ) -> String {
         var html = "<div>\(escape(titleLine))</div>"
         for section in sections {
             html += "<h1>\(escape(section.header))</h1>"
-            html += "<p>\(escape(section.bodyText))</p>"
-            for noteID in section.sourceNoteIDs {
-                guard let images = stagedImages[noteID] else { continue }
-                for image in images {
-                    if embedImages {
-                        html += "<img src=\"file://\(image.localURL.path)\">"
-                    } else {
-                        html += "<p>[image from &quot;\(escape(image.sourceNoteTitle))&quot; — staged at \(escape(image.localURL.path))]</p>"
-                    }
-                }
+            html += "<ul>"
+            for line in bulletLines(from: section.bodyText) {
+                html += "<li>\(escape(line))</li>"
+            }
+            html += "</ul>"
+
+            let titles = section.sourceNoteIDs.compactMap { sourceNoteTitles[$0] }
+            if !titles.isEmpty {
+                html += "<p><em>Sources: \(escape(titles.joined(separator: ", ")))</em></p>"
             }
         }
-        // Fallback path: images live only on disk, so point at the folder.
-        if !embedImages, !stagedImages.isEmpty, let runDirectory {
-            html += "<p>Images for this merge are staged at \(escape(runDirectory.path))</p>"
-        }
         return html
+    }
+
+    /// Splits LLM-produced body text into individual bullet points. The
+    /// model is asked for one point per line, but strips any leading
+    /// bullet marker (`-`, `*`, `•`) it adds anyway, and falls back to
+    /// treating the whole text as one point if it returned a single line.
+    private static func bulletLines(from bodyText: String) -> [String] {
+        let lines = bodyText
+            .components(separatedBy: .newlines)
+            .map { line -> String in
+                var trimmed = line.trimmingCharacters(in: .whitespaces)
+                while let first = trimmed.first, "-*•".contains(first) {
+                    trimmed = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+                }
+                return trimmed
+            }
+            .filter { !$0.isEmpty }
+        return lines.isEmpty ? [bodyText.trimmingCharacters(in: .whitespaces)] : lines
     }
 
     private static func escape(_ s: String) -> String {

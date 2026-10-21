@@ -9,86 +9,55 @@ final class MergeAssemblerTests: XCTestCase {
         XCTAssertEqual(MergeAssembler.titleLine(date: date), "Merged Notes — 2026-08-15")
     }
 
-    func test_assembleHTML_oneHeadingPerSection_noImages() {
+    func test_assembleHTML_oneHeadingPerSection_bulletedBody() {
         let sections = [
-            MergeSection(header: "Work", bodyText: "Line one", sourceNoteIDs: ["A"]),
-            MergeSection(header: "Health", bodyText: "Line two", sourceNoteIDs: ["B"])
+            MergeSection(header: "Work", bodyText: "Line one\nLine two", sourceNoteIDs: ["A"]),
+            MergeSection(header: "Health", bodyText: "Line three", sourceNoteIDs: ["B"])
         ]
         let html = MergeAssembler.assembleHTML(
             sections: sections, titleLine: "Merged Notes — 2026-08-15",
-            stagedImages: [:], embedImages: true
+            sourceNoteTitles: ["A": "Note A", "B": "Note B"]
         )
         XCTAssertTrue(html.hasPrefix("<div>Merged Notes — 2026-08-15</div>"))
         XCTAssertTrue(html.contains("<h1>Work</h1>"))
-        XCTAssertTrue(html.contains("<p>Line one</p>"))
+        XCTAssertTrue(html.contains("<ul><li>Line one</li><li>Line two</li></ul>"))
         XCTAssertTrue(html.contains("<h1>Health</h1>"))
-        XCTAssertTrue(html.contains("<p>Line two</p>"))
+        XCTAssertTrue(html.contains("<ul><li>Line three</li></ul>"))
     }
 
-    func test_assembleHTML_embedsImagesInline_whenEnabled() {
-        let sections = [MergeSection(header: "Recipes", bodyText: "Text", sourceNoteIDs: ["A"])]
-        let image = StagedImage(sourceNoteID: "A", sourceNoteTitle: "Pasta", localURL: URL(fileURLWithPath: "/tmp/run/pasta.png"))
+    func test_assembleHTML_stripsLeadingBulletMarkers() {
+        let sections = [MergeSection(header: "H", bodyText: "- Point one\n* Point two\n• Point three", sourceNoteIDs: [])]
+        let html = MergeAssembler.assembleHTML(sections: sections, titleLine: "T", sourceNoteTitles: [:])
+        XCTAssertTrue(html.contains("<ul><li>Point one</li><li>Point two</li><li>Point three</li></ul>"))
+    }
+
+    func test_assembleHTML_fallsBackToSingleBullet_whenBodyIsOneLine() {
+        let sections = [MergeSection(header: "H", bodyText: "Just one line", sourceNoteIDs: [])]
+        let html = MergeAssembler.assembleHTML(sections: sections, titleLine: "T", sourceNoteTitles: [:])
+        XCTAssertTrue(html.contains("<ul><li>Just one line</li></ul>"))
+    }
+
+    func test_assembleHTML_listsSourceNoteTitles() {
+        let sections = [MergeSection(header: "Recipes", bodyText: "Text", sourceNoteIDs: ["A", "B"])]
         let html = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: ["A": [image]], embedImages: true
+            sections: sections, titleLine: "T",
+            sourceNoteTitles: ["A": "Pasta night", "B": "Soup ideas"]
         )
-        XCTAssertTrue(html.contains("<img src=\"file:///tmp/run/pasta.png\">"))
+        XCTAssertTrue(html.contains("<p><em>Sources: Pasta night, Soup ideas</em></p>"))
     }
 
-    func test_assembleHTML_referencesImages_whenEmbedDisabled() {
-        let sections = [MergeSection(header: "Recipes", bodyText: "Text", sourceNoteIDs: ["A"])]
-        let image = StagedImage(sourceNoteID: "A", sourceNoteTitle: "Pasta", localURL: URL(fileURLWithPath: "/tmp/run/pasta.png"))
+    func test_assembleHTML_omitsSourcesLine_whenNoTitlesKnown() {
+        let sections = [MergeSection(header: "Recipes", bodyText: "Text", sourceNoteIDs: ["missing"])]
+        let html = MergeAssembler.assembleHTML(sections: sections, titleLine: "T", sourceNoteTitles: [:])
+        XCTAssertFalse(html.contains("Sources:"))
+    }
+
+    func test_assembleHTML_escapesHTMLSpecialCharsInBodyTextAndTitles() {
+        let sections = [MergeSection(header: "H", bodyText: "5 < 10 & \"quoted\"", sourceNoteIDs: ["A"])]
         let html = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: ["A": [image]], embedImages: false
+            sections: sections, titleLine: "T", sourceNoteTitles: ["A": "Tom & Jerry"]
         )
-        XCTAssertFalse(html.contains("<img"))
-        XCTAssertTrue(html.contains("[image from &quot;Pasta&quot; — staged at /tmp/run/pasta.png]"))
-    }
-
-    func test_assembleHTML_escapesStagedPath() {
-        let sections = [MergeSection(header: "H", bodyText: "T", sourceNoteIDs: ["A"])]
-        let image = StagedImage(
-            sourceNoteID: "A", sourceNoteTitle: "N",
-            localURL: URL(fileURLWithPath: "/tmp/run/a<b>&\"c\".png")
-        )
-        let html = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: ["A": [image]], embedImages: false
-        )
-        XCTAssertTrue(html.contains("staged at /tmp/run/a&lt;b&gt;&amp;&quot;c&quot;.png]"))
-        XCTAssertFalse(html.contains("<b>"))
-    }
-
-    func test_assembleHTML_appendsRunDirectoryPointer_whenEmbedDisabled() {
-        let sections = [MergeSection(header: "H", bodyText: "T", sourceNoteIDs: ["A"])]
-        let image = StagedImage(
-            sourceNoteID: "A", sourceNoteTitle: "N",
-            localURL: URL(fileURLWithPath: "/tmp/run/a.png")
-        )
-        let runDir = URL(fileURLWithPath: "/tmp/run", isDirectory: true)
-
-        let html = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: ["A": [image]],
-            embedImages: false, runDirectory: runDir
-        )
-        XCTAssertTrue(html.hasSuffix("<p>Images for this merge are staged at /tmp/run</p>"))
-
-        // Not appended when there is nothing staged.
-        let empty = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: [:],
-            embedImages: false, runDirectory: runDir
-        )
-        XCTAssertFalse(empty.contains("Images for this merge are staged at"))
-
-        // Not appended when images are embedded inline.
-        let embedded = MergeAssembler.assembleHTML(
-            sections: sections, titleLine: "T", stagedImages: ["A": [image]],
-            embedImages: true, runDirectory: runDir
-        )
-        XCTAssertFalse(embedded.contains("Images for this merge are staged at"))
-    }
-
-    func test_assembleHTML_escapesHTMLSpecialCharsInBodyText() {
-        let sections = [MergeSection(header: "H", bodyText: "5 < 10 & \"quoted\"", sourceNoteIDs: [])]
-        let html = MergeAssembler.assembleHTML(sections: sections, titleLine: "T", stagedImages: [:], embedImages: true)
         XCTAssertTrue(html.contains("5 &lt; 10 &amp; &quot;quoted&quot;"))
+        XCTAssertTrue(html.contains("Tom &amp; Jerry"))
     }
 }

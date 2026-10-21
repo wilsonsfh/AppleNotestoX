@@ -61,6 +61,9 @@ actor GroqService {
         list. Respond with strict JSON only, matching this shape exactly, no prose, no \
         markdown fences:
         {"sections":[{"header":"string","body":"string","source_note_ids":["string"]}]}
+        For each section's "body", write concise bullet points — one distinct point per \
+        line, separated by "\\n". Do not write one long paragraph. Do not prefix lines with \
+        "-", "*", or any other bullet marker; each line is already treated as one bullet.
         Every note id you were given must appear in at least one section's source_note_ids.
         """
         if !existingHeaders.isEmpty {

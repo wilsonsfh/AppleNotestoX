@@ -435,9 +435,6 @@ final class AppState {
 
     func cancelMerge() async {
         showMergePreview = false
-        if case .readyForPreview(let draft) = mergeStage {
-            await mergeCoordinator.discard(draft: draft)
-        }
         mergeStage = nil
     }
 
