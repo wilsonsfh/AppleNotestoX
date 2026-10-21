@@ -178,7 +178,7 @@ struct DestinationPane: View {
                                 state.chooseVault(url)
                             }
                         }
-                        Text("Notes land in raw/journal; screenshots and media land in raw/assets.")
+                    Text("Notes land in raw/apple-notes by content category; screenshots and media land in raw/assets.")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .fixedSize(horizontal: false, vertical: true)

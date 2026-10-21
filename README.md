@@ -44,12 +44,12 @@ AppleNotestoX connects those stages without replacing the tools that already wor
 - Reads the Apple Notes account/folder/note hierarchy through AppleScript and supports multi-select export.
 - Searches note titles and full folder paths case- and diacritic-insensitively; results show their folder context and sort newest first.
 - Exposes search through the field in Capture mode and the application-wide **Command-F** command.
-- Exports selected notes as Markdown to `raw/journal/` and copies screenshots and other attachments to `raw/assets/`.
+- Exports selected notes as Markdown to `raw/apple-notes/<category>/` and copies screenshots and other attachments to `raw/assets/`.
 - Preserves inline image position where Apple Notes supplies matching attachment placeholders; unmatched files are retained in an **Unplaced attachments** section with warnings.
 - Leaves Apple Notes untouched during Personal Wiki export.
-- Deduplicates re-exports: a note already present in `raw/journal/` with an unchanged modified date is skipped instead of creating a numbered duplicate file; re-run the same selection freely.
+- Deduplicates re-exports across `raw/apple-notes/` categories (and legacy `raw/journal/`): a note with an unchanged modified date is skipped instead of creating a numbered duplicate file.
 - Includes a persistent **Personal Wiki** footer for choosing a vault, exporting selected notes, and seeing progress or completion state.
-- A dedicated **Duplicates** tab scans `raw/journal/` for notes that already have more than one exported file (e.g. from before dedup existed), lets you review each group and pick which files to keep, and moves the rest — plus any images only they reference — to the Trash.
+- A dedicated **Duplicates** tab recursively scans `raw/apple-notes/` (and legacy `raw/journal/`) for notes that already have more than one exported file, lets you review each group and pick which files to keep, and moves the rest — plus any images only they reference — to the Trash.
 - Exports Apple Notes to a selected Notion page, including uploaded images, with optional post-export leave, move, or delete behavior shown in the preview flow.
 - Imports accessible Notion pages into the same `raw/journal/` and `raw/assets/` contract through `tools/notion-import.mjs`.
 - Imports a video, or optionally processes video attachments in notes, using Apple Speech plus evenly spaced keyframes.
@@ -69,7 +69,7 @@ Apple Notes --AppleScript--> HTML + ordered attachments
                  MarkdownRenderer   Notion blocks
                         |             |
                         v             v
-Personal Wiki/raw/journal + raw/assets   Notion API
+Personal Wiki/raw/apple-notes/<category> + raw/assets   Notion API
               |
               |  LLM-owned synthesis (outside this app)
               v
@@ -80,7 +80,7 @@ Personal Wiki/wiki/**/*.md
 review/study-data.js --> static review app
 
 Video file --> AVFoundation audio chunks + keyframes
-             --> on-device Apple Speech --> raw/journal + raw/assets
+             --> on-device Apple Speech --> raw/apple-notes/<category> + raw/assets
 
 Notion API --> Node importer --> raw/journal + raw/assets
 ```
@@ -89,7 +89,7 @@ The SwiftUI app coordinates work through observable `AppState` and actor-backed 
 
 ## Design Choices and Tradeoffs
 
-- **Immutable raw, derived wiki:** `raw/journal/` and `raw/assets/` preserve source evidence; `wiki/` is derived synthesis. This adds an explicit ingest step but prevents the app from silently rewriting interpretation as fact.
+- **Immutable raw, derived wiki:** `raw/apple-notes/`, `raw/journal/` and `raw/assets/` preserve source evidence; `wiki/` is derived synthesis. This adds an explicit ingest step but prevents the app from silently rewriting interpretation as fact.
 - **LLM-owned synthesis:** the app identifies the backlog and prepares a prompt, but does not generate `wiki/` pages. Users retain control over the model, instructions, review, and provenance rules.
 - **Reuse the document intermediate representation:** the existing Notion-oriented block model also feeds Markdown. This minimized risk to the Notion path, although some type names remain destination-specific.
 - **Position over compression:** wiki exports copy original assets and map placeholders in document order. This favors fidelity and local storage use; malformed Notes HTML can still require review, so mismatches produce visible warnings rather than silent reordering.
@@ -188,7 +188,8 @@ The destination vault must follow this contract:
 ```text
 your-wiki/
   raw/
-    journal/   # provenance-stamped Markdown source notes
+    apple-notes/<category>/ # provenance-stamped Markdown source notes
+    journal/   # legacy non-Apple-Notes sources
     assets/    # original screenshots, attachments, videos, and keyframes
   wiki/
     sources/   # LLM-created source syntheses
@@ -198,7 +199,7 @@ your-wiki/
 2. Search by title or folder with the search field or **Command-F**, then select one or more notes.
 3. Keep **Personal Wiki** selected and choose the root of your wiki folder.
 4. Use the **Personal Wiki** footer to export the selected notes. Command-Return is available when the wiki action is ready.
-5. Inspect the new files in `raw/journal/` and `raw/assets/`, including any visible attachment warnings.
+5. Inspect the new files in `raw/apple-notes/<category>/` and `raw/assets/`, including any visible attachment warnings.
 6. Ask your LLM workflow to synthesize the new raw files into `wiki/sources/` and related concept pages. The app deliberately does not perform this step.
 7. Return to **Study** to see unsynthesized raw files, copy an opencode prompt, refresh study data, or launch the review app.
 
@@ -222,7 +223,7 @@ The importer writes Markdown and downloaded images into `raw/`. Remote image dow
 
 ### Video to Personal Wiki
 
-Choose a vault, then use **Import video** in Capture mode, or enable **Transcribe video attachments** before exporting notes. The app splits audio into chunks of at most 55 seconds, requests Apple Speech with on-device recognition required, extracts six evenly spaced keyframes by default, copies the source video, and writes a machine-transcribed Markdown note to `raw/journal/` with media in `raw/assets/`.
+Choose a vault, then use **Import video** in Capture mode, or enable **Transcribe video attachments** before exporting notes. The app splits audio into chunks of at most 55 seconds, requests Apple Speech with on-device recognition required, extracts six evenly spaced keyframes by default, copies the source video, and writes a machine-transcribed Markdown note to `raw/apple-notes/<category>/` with media in `raw/assets/`.
 
 Real-video acceptance with Speech permission is still pending; review transcripts before treating them as accurate source text.
 
@@ -272,7 +273,7 @@ Then open `http://localhost:8080`. Flashcard scheduling and streaks stay in that
 | Video | Build, pure video-support/transcript logic, and embedded Speech usage descriptions were verified | Real `.mov` import, Speech permission, and long-video timestamp acceptance remain pending |
 | Review app | JavaScript syntax, generator output, SM-2 behavior, and sample-data integration were verified | Manual browser UI, TTS, and accessibility click-through remains pending |
 | Notion importer | Syntax and help output are verified; 103 passing Node tests cover security, downloads, publication, and YAML safety; a separate 12-check harness covers block, rich-text, and page conversion | Live Notion API calls and signed image downloads remain a first-run integration gate |
-| Recategorise Apple Notes | `swift build` recorded green; pure-logic harnesses (`PlainTextExtractorTests`, `MergeModelsTests`, `MergeAssemblerTests`, `GroqServiceTests`, `TriageAssetStoreTests`, `MergeBatchingTests`) cover extraction, grouping models, note assembly, Groq/GLM request/response handling (including `configure(baseURL:model:)` and header-reuse prompting), and the batch-split/merge pipeline | Live Groq and GLM API round-trips and writing the merged note into Notes via `AppleNotesService.createNote` remain a first-run manual acceptance gate, pending real API keys and Notes Automation permission |
+| Recategorise Apple Notes | `swift build` recorded green; pure-logic harnesses (`PlainTextExtractorTests`, `MergeModelsTests`, `MergeAssemblerTests`, `GroqServiceTests`, `MergeBatchingTests`) cover extraction, grouping models, note assembly, Groq/GLM request/response handling (including `configure(baseURL:model:)` and header-reuse prompting), and the batch-split/merge pipeline | Live Groq and GLM API round-trips and writing the merged note into Notes via `AppleNotesService.createNote` remain a first-run manual acceptance gate, pending real API keys and Notes Automation permission |
 | Personal Wiki dedup/duplicates tab | `swift build` recorded green; `WikiVaultIndexTests`, `WikiDuplicateFinderTests`, `WikiDuplicateAssetsTests`, and `WikiVaultMaintenanceTests` (real temp-vault filesystem I/O, Trash calls stubbed out) cover frontmatter parsing, duplicate grouping, referenced-asset extraction, and selective delete-with-shared-asset-retention | Manual click-through of the Duplicates tab against a real vault, and confirming `FileManager.trashItem` behaves as expected outside the test harness, remain pending |
 
 Known limitations include macOS-only capture, best-effort conversion for complex Notes HTML, heuristic filename matching for the synthesis backlog, browser-local review history, no speaker diarization, no remote-video/YouTube ingestion, and no automated LLM synthesis. The repository currently has no license; public source availability does not by itself grant reuse rights.

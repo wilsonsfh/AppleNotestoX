@@ -68,8 +68,9 @@ final class WikiExportAssemblerTests: XCTestCase {
 
     func testFilenameCollisionSuffixes() throws {
         let cfg = WikiVaultConfig(vaultURL: tmp.appendingPathComponent("vault"))
-        try FileManager.default.createDirectory(at: cfg.journalDir, withIntermediateDirectories: true)
-        try "x".write(to: cfg.journalDir.appendingPathComponent("1970-01-01-t.md"),
+        let categoryDir = cfg.appleNotesDir(for: .referenceAndLists)
+        try FileManager.default.createDirectory(at: categoryDir, withIntermediateDirectories: true)
+        try "x".write(to: categoryDir.appendingPathComponent("1970-01-01-t.md"),
                       atomically: true, encoding: .utf8)
         let content = AppleNoteContent(html: "<div>hi</div>", attachments: [])
 

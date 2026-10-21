@@ -3,11 +3,25 @@ import Foundation
 /// Where exported notes land inside the Obsidian LLM-wiki vault.
 struct WikiVaultConfig: Sendable, Equatable {
     var vaultURL: URL
-    var journalSubpath: String = "raw/journal"
+    var appleNotesSubpath: String = "raw/apple-notes"
+    var legacyJournalSubpath: String = "raw/journal"
     var assetsSubpath: String = "raw/assets"
 
-    var journalDir: URL { vaultURL.appendingPathComponent(journalSubpath, isDirectory: true) }
+    var appleNotesDir: URL { vaultURL.appendingPathComponent(appleNotesSubpath, isDirectory: true) }
+    var legacyJournalDir: URL { vaultURL.appendingPathComponent(legacyJournalSubpath, isDirectory: true) }
     var assetsDir: URL { vaultURL.appendingPathComponent(assetsSubpath, isDirectory: true) }
+
+    /// Compatibility alias for integrations that store non-note capture under
+    /// the Apple Notes root. New Apple Notes documents use a category folder.
+    var journalDir: URL { appleNotesDir }
+
+    /// New Apple Notes exports are grouped by content. The legacy journal is
+    /// retained in scans so existing vaults remain readable during migration.
+    var sourceNoteDirs: [URL] { [appleNotesDir, legacyJournalDir] }
+
+    func appleNotesDir(for category: AppleNoteCategory) -> URL {
+        appleNotesDir.appendingPathComponent(category.directoryName, isDirectory: true)
+    }
 }
 
 struct WikiExportJob: Sendable {

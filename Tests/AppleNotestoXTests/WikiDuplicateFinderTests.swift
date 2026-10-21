@@ -3,11 +3,12 @@ import XCTest
 
 final class WikiDuplicateFinderTests: XCTestCase {
     private func entry(
-        noteID: String, day: String, exported: String? = nil, title: String? = nil, filename: String
+        noteID: String, day: String, exported: String? = nil, title: String? = nil, filename: String,
+        content: String = ""
     ) -> WikiVaultIndex.Entry {
         WikiVaultIndex.Entry(
             noteID: noteID, noteModifiedDay: day, exportedDay: exported, title: title,
-            markdownPath: URL(fileURLWithPath: "/vault/raw/journal/\(filename)")
+            markdownPath: URL(fileURLWithPath: "/vault/raw/journal/\(filename)"), content: content
         )
     }
 
@@ -82,5 +83,43 @@ final class WikiDuplicateFinderTests: XCTestCase {
 
     func test_duplicateGroups_emptyIndex_returnsNoGroups() {
         XCTAssertEqual(WikiDuplicateFinder.duplicateGroups(in: [:]), [])
+    }
+
+    func test_possibleDuplicatePairs_flagsSimilarContentAcrossDifferentNoteIDs() {
+        let body = "The quick brown fox jumps over the lazy dog near the river bank today"
+        let index: [String: [WikiVaultIndex.Entry]] = [
+            "A": [entry(noteID: "A", day: "2026-01-01", filename: "a.md", content: body)],
+            "B": [entry(noteID: "B", day: "2026-01-01", filename: "b.md", content: body)],
+        ]
+
+        let pairs = WikiDuplicateFinder.possibleDuplicatePairs(in: index)
+
+        XCTAssertEqual(pairs.count, 1)
+        XCTAssertEqual(pairs[0].similarity, 1.0)
+    }
+
+    func test_possibleDuplicatePairs_excludesPairsBelowThreshold() {
+        let index: [String: [WikiVaultIndex.Entry]] = [
+            "A": [entry(noteID: "A", day: "2026-01-01", filename: "a.md", content: "Quarterly tax filing notes")],
+            "B": [entry(noteID: "B", day: "2026-01-01", filename: "b.md", content: "Weekend hiking trip photos")],
+        ]
+
+        XCTAssertEqual(WikiDuplicateFinder.possibleDuplicatePairs(in: index), [])
+    }
+
+    func test_possibleDuplicatePairs_excludesEntriesSharingTheSameNoteID() {
+        let body = "The quick brown fox jumps over the lazy dog near the river bank today"
+        let index: [String: [WikiVaultIndex.Entry]] = [
+            "A": [
+                entry(noteID: "A", day: "2026-01-01", filename: "a.md", content: body),
+                entry(noteID: "A", day: "2026-01-01", filename: "a-2.md", content: body),
+            ]
+        ]
+
+        XCTAssertEqual(WikiDuplicateFinder.possibleDuplicatePairs(in: index), [])
+    }
+
+    func test_possibleDuplicatePairs_emptyIndex_returnsNoPairs() {
+        XCTAssertEqual(WikiDuplicateFinder.possibleDuplicatePairs(in: [:]), [])
     }
 }

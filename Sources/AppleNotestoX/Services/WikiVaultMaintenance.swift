@@ -1,7 +1,7 @@
 import Foundation
 
 /// Finds and removes duplicate exports in a Personal Wiki vault — notes
-/// that ended up with more than one file in `raw/journal/`, typically
+/// that ended up with more than one file under `raw/apple-notes/`, typically
 /// leftovers from before `WikiExportCoordinator` started deduping re-runs.
 /// Deletions go to the Trash (never a permanent `removeItem`), since this
 /// is a user-triggered destructive action on real exported content.
@@ -18,8 +18,17 @@ actor WikiVaultMaintenance {
     }
 
     func findDuplicates(config: WikiVaultConfig) -> [WikiDuplicateFinder.Group] {
-        let index = WikiVaultIndex.scan(journalDir: config.journalDir, fileManager: fileManager)
+        let index = WikiVaultIndex.scan(noteDirs: config.sourceNoteDirs, fileManager: fileManager)
         return WikiDuplicateFinder.duplicateGroups(in: index)
+    }
+
+    /// Notes with *different* `apple_note_id`s but near-identical content —
+    /// e.g. a note manually duplicated in Apple Notes, or content pasted
+    /// into a second note. A separate, lower-confidence signal from
+    /// `findDuplicates`, which only catches same-ID re-exports.
+    func findPossibleDuplicates(config: WikiVaultConfig) -> [WikiDuplicateFinder.PossibleDuplicatePair] {
+        let index = WikiVaultIndex.scan(noteDirs: config.sourceNoteDirs, fileManager: fileManager)
+        return WikiDuplicateFinder.possibleDuplicatePairs(in: index)
     }
 
     /// Removes `entry`'s markdown file, plus any asset it references that no
@@ -30,7 +39,7 @@ actor WikiVaultMaintenance {
         try remove(entry.markdownPath)
 
         guard !referenced.isEmpty else { return }
-        let stillReferenced = assetsStillReferenced(in: config.journalDir, config: config)
+        let stillReferenced = assetsStillReferenced(in: config.sourceNoteDirs, config: config)
         for name in referenced where !stillReferenced.contains(name) {
             try? remove(config.assetsDir.appendingPathComponent(name))
         }
@@ -41,15 +50,13 @@ actor WikiVaultMaintenance {
         return WikiDuplicateAssets.referencedAssetFilenames(in: text, assetsSubpath: config.assetsSubpath)
     }
 
-    private func assetsStillReferenced(in journalDir: URL, config: WikiVaultConfig) -> Set<String> {
-        guard let files = try? fileManager.contentsOfDirectory(
-            at: journalDir, includingPropertiesForKeys: nil
-        ) else {
-            return []
-        }
+    private func assetsStillReferenced(in noteDirs: [URL], config: WikiVaultConfig) -> Set<String> {
         var referenced: Set<String> = []
-        for file in files where file.pathExtension.lowercased() == "md" {
-            referenced.formUnion(referencedAssets(of: file, config: config))
+        for root in noteDirs {
+            guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { continue }
+            for case let file as URL in enumerator where file.pathExtension.lowercased() == "md" {
+                referenced.formUnion(referencedAssets(of: file, config: config))
+            }
         }
         return referenced
     }

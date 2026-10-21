@@ -76,12 +76,18 @@ final class AppState {
 
     // Personal Wiki duplicate cleanup
     var duplicateGroups: [WikiDuplicateFinder.Group] = []
+    /// Cross-note content matches (different `apple_note_id`s) — a lower-
+    /// confidence, separate signal from `duplicateGroups`. Nothing is
+    /// pre-selected for these; the user reviews the diff before acting.
+    var possibleDuplicatePairs: [WikiDuplicateFinder.PossibleDuplicatePair] = []
     var isScanningDuplicates = false
     var duplicateScanError: String? = nil
     /// Files currently checked for removal, by markdown path. Populated with
     /// every entry except each group's newest (kept) one right after a scan.
     var selectedDuplicatePaths: Set<URL> = []
     var isDeletingDuplicates = false
+    /// The pair of entries currently shown in the diff sheet, if any.
+    var duplicateDiffEntries: (old: WikiVaultIndex.Entry, new: WikiVaultIndex.Entry)? = nil
 
     // Study + synthesis (Wiki Studio pass 1)
     enum AppMode: String, Sendable { case study, capture, duplicates }
@@ -448,17 +454,27 @@ final class AppState {
         let didAccess = vault.startAccessingSecurityScopedResource()
         defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
 
-        let groups = await vaultMaintenance.findDuplicates(config: WikiVaultConfig(vaultURL: vault))
+        let config = WikiVaultConfig(vaultURL: vault)
+        let groups = await vaultMaintenance.findDuplicates(config: config)
         duplicateGroups = groups
         // Default to keeping each group's newest export and marking the
         // rest for removal — the user reviews/adjusts before confirming.
         selectedDuplicatePaths = Set(groups.flatMap { $0.entries.dropFirst().map(\.markdownPath) })
+        possibleDuplicatePairs = await vaultMaintenance.findPossibleDuplicates(config: config)
     }
 
     func toggleDuplicateSelection(_ path: URL) {
         if selectedDuplicatePaths.remove(path) == nil {
             selectedDuplicatePaths.insert(path)
         }
+    }
+
+    func showDiff(old: WikiVaultIndex.Entry, new: WikiVaultIndex.Entry) {
+        duplicateDiffEntries = (old: old, new: new)
+    }
+
+    func closeDiff() {
+        duplicateDiffEntries = nil
     }
 
     func deleteSelectedDuplicates() async {
@@ -469,8 +485,10 @@ final class AppState {
         defer { if didAccess { vault.stopAccessingSecurityScopedResource() } }
 
         let config = WikiVaultConfig(vaultURL: vault)
+        let possibleDuplicateEntries = possibleDuplicatePairs.flatMap { [$0.entryA, $0.entryB] }
         let entriesByPath = Dictionary(
-            uniqueKeysWithValues: duplicateGroups.flatMap { $0.entries }.map { ($0.markdownPath, $0) }
+            (duplicateGroups.flatMap { $0.entries } + possibleDuplicateEntries).map { ($0.markdownPath, $0) },
+            uniquingKeysWith: { existing, _ in existing }
         )
         for path in selectedDuplicatePaths {
             guard let entry = entriesByPath[path] else { continue }

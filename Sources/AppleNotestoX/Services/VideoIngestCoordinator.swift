@@ -21,10 +21,10 @@ actor VideoIngestCoordinator {
         keyframeCount: Int = 6
     ) async throws -> WikiExportResult {
         let fm = FileManager.default
-        try fm.createDirectory(at: config.journalDir, withIntermediateDirectories: true)
-        try fm.createDirectory(at: config.assetsDir, withIntermediateDirectories: true)
-
         let effectiveTitle = title ?? videoURL.deletingPathExtension().lastPathComponent
+        let noteDir = config.appleNotesDir(for: AppleNoteCategory.classify(title: effectiveTitle, markdown: ""))
+        try fm.createDirectory(at: noteDir, withIntermediateDirectories: true)
+        try fm.createDirectory(at: config.assetsDir, withIntermediateDirectories: true)
         let slug = WikiNaming.slug(from: effectiveTitle)
 
         let (transcript, keyframes) = try await service.transcribe(videoURL: videoURL, keyframeCount: keyframeCount)
@@ -86,7 +86,7 @@ actor VideoIngestCoordinator {
         let markdownFile = try WikiNaming.publishTracked(
             data: Data(body.utf8),
             preferredName: "\(WikiNaming.isoDay(modified))-\(slug)-transcript.md",
-            in: config.journalDir
+            in: noteDir
         )
         committed = true
 

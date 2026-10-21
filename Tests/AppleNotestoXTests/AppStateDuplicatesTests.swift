@@ -76,6 +76,56 @@ final class AppStateDuplicatesTests: XCTestCase {
         XCTAssertFalse(state.isDeletingDuplicates)
     }
 
+    @MainActor
+    func testScanForDuplicatesAlsoPopulatesPossibleDuplicatePairs() async throws {
+        let body = "The quick brown fox jumps over the lazy dog near the river bank today for a long walk"
+        let journalDir = WikiVaultConfig(vaultURL: tmp).journalDir
+        try FileManager.default.createDirectory(at: journalDir, withIntermediateDirectories: true)
+        let modified = Date(timeIntervalSince1970: 0)
+        try (WikiNaming.frontmatter(noteID: "A", title: "Walk", modified: modified, exported: modified) + body)
+            .write(to: journalDir.appendingPathComponent("walk.md"), atomically: true, encoding: .utf8)
+        try (WikiNaming.frontmatter(noteID: "B", title: "Walk Copy", modified: modified, exported: modified) + body)
+            .write(to: journalDir.appendingPathComponent("walk-copy.md"), atomically: true, encoding: .utf8)
+
+        let state = AppState()
+        state.vaultURL = tmp
+        await state.scanForDuplicates()
+
+        XCTAssertEqual(state.possibleDuplicatePairs.count, 1)
+    }
+
+    @MainActor
+    func testShowDiffSetsDuplicateDiffEntries() {
+        let state = AppState()
+        let old = WikiVaultIndex.Entry(
+            noteID: "A", noteModifiedDay: "2026-01-01", exportedDay: "2026-01-01", title: "Old",
+            markdownPath: URL(fileURLWithPath: "/tmp/old.md"), content: "old body"
+        )
+        let new = WikiVaultIndex.Entry(
+            noteID: "A", noteModifiedDay: "2026-01-05", exportedDay: "2026-01-05", title: "New",
+            markdownPath: URL(fileURLWithPath: "/tmp/new.md"), content: "new body"
+        )
+
+        state.showDiff(old: old, new: new)
+
+        XCTAssertEqual(state.duplicateDiffEntries?.old, old)
+        XCTAssertEqual(state.duplicateDiffEntries?.new, new)
+    }
+
+    @MainActor
+    func testCloseDiffClearsDuplicateDiffEntries() {
+        let state = AppState()
+        let entry = WikiVaultIndex.Entry(
+            noteID: "A", noteModifiedDay: "2026-01-01", exportedDay: "2026-01-01", title: "Old",
+            markdownPath: URL(fileURLWithPath: "/tmp/old.md"), content: "old body"
+        )
+        state.showDiff(old: entry, new: entry)
+
+        state.closeDiff()
+
+        XCTAssertNil(state.duplicateDiffEntries)
+    }
+
     // Note: the actual delete-and-rescan path (deleteSelectedDuplicates with
     // a non-empty selection) is intentionally not exercised here — AppState
     // always constructs its real WikiVaultMaintenance with the Trash-based

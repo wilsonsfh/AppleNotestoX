@@ -33,7 +33,7 @@ actor WikiExportCoordinator {
 
                 continuation.yield(snapshot())
 
-                let vaultIndex = WikiVaultIndex.scan(journalDir: job.config.journalDir)
+                let vaultIndex = WikiVaultIndex.scan(noteDirs: job.config.sourceNoteDirs)
 
                 for (idx, noteID) in job.noteIDs.enumerated() {
                     do {

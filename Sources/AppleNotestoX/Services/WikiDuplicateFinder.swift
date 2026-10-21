@@ -33,4 +33,40 @@ enum WikiDuplicateFinder {
             }
             .sorted { $0.displayTitle.localizedStandardCompare($1.displayTitle) == .orderedAscending }
     }
+
+    /// A pair of entries with different `apple_note_id`s whose content is
+    /// similar enough to be a likely duplicate — e.g. a note manually
+    /// duplicated in Apple Notes, or content pasted into a second note.
+    /// Same-ID entries are excluded; `duplicateGroups` already covers those.
+    struct PossibleDuplicatePair: Sendable, Equatable, Identifiable {
+        var id: String { entryA.markdownPath.path + "|" + entryB.markdownPath.path }
+        let entryA: WikiVaultIndex.Entry
+        let entryB: WikiVaultIndex.Entry
+        let similarity: Double
+    }
+
+    /// Every cross-note pair whose content-similarity meets `threshold`,
+    /// sorted by similarity descending. `O(n^2)` in the number of entries —
+    /// fine at personal-wiki scale.
+    static func possibleDuplicatePairs(
+        in index: [String: [WikiVaultIndex.Entry]],
+        threshold: Double = WikiContentSimilarity.defaultThreshold
+    ) -> [PossibleDuplicatePair] {
+        let entries = index.flatMap { $0.value }
+        guard entries.count > 1 else { return [] }
+
+        let shingleSets = entries.map { WikiContentSimilarity.shingles(of: $0.content) }
+        var pairs: [PossibleDuplicatePair] = []
+        for i in 0..<(entries.count - 1) {
+            for j in (i + 1)..<entries.count {
+                let a = entries[i]
+                let b = entries[j]
+                guard a.noteID != b.noteID else { continue }
+                let similarity = WikiContentSimilarity.jaccardSimilarity(shingleSets[i], shingleSets[j])
+                guard similarity >= threshold else { continue }
+                pairs.append(PossibleDuplicatePair(entryA: a, entryB: b, similarity: similarity))
+            }
+        }
+        return pairs.sorted { $0.similarity > $1.similarity }
+    }
 }

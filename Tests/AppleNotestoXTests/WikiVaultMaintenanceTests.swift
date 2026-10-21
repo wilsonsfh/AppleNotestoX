@@ -44,10 +44,20 @@ final class WikiVaultMaintenanceTests: XCTestCase {
         XCTAssertEqual(groups[0].entries.count, 2)
     }
 
+    func test_findPossibleDuplicates_flagsSimilarContentAcrossDifferentNoteIDs() async throws {
+        let body = "The quick brown fox jumps over the lazy dog near the river bank today for a long walk"
+        try writeJournal(body, frontmatter: fm(noteID: "A", title: "Walk"), filename: "walk.md")
+        try writeJournal(body, frontmatter: fm(noteID: "B", title: "Walk Copy"), filename: "walk-copy.md")
+
+        let pairs = await makeMaintenance().findPossibleDuplicates(config: config)
+
+        XCTAssertEqual(pairs.count, 1)
+    }
+
     func test_delete_removesTheMarkdownFile() async throws {
         let url = try writeJournal("body", frontmatter: fm(noteID: "A", title: "Cafe"), filename: "cafe.md")
         let entry = WikiVaultIndex.Entry(
-            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: url
+            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: url, content: ""
         )
 
         try await makeMaintenance().delete(entry: entry, config: config)
@@ -61,7 +71,7 @@ final class WikiVaultMaintenanceTests: XCTestCase {
             "![[cafe-01.png]]", frontmatter: fm(noteID: "A", title: "Cafe"), filename: "cafe-2.md"
         )
         let entry = WikiVaultIndex.Entry(
-            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: url
+            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: url, content: ""
         )
 
         try await makeMaintenance().delete(entry: entry, config: config)
@@ -79,7 +89,7 @@ final class WikiVaultMaintenanceTests: XCTestCase {
             "![[cafe-01.png]]", frontmatter: fm(noteID: "A", title: "Cafe"), filename: "cafe-2.md"
         )
         let entry = WikiVaultIndex.Entry(
-            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: deleted
+            noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: "1970-01-01", title: "Cafe", markdownPath: deleted, content: ""
         )
 
         try await makeMaintenance().delete(entry: entry, config: config)
@@ -92,7 +102,7 @@ final class WikiVaultMaintenanceTests: XCTestCase {
     func test_delete_missingFile_throws() async {
         let entry = WikiVaultIndex.Entry(
             noteID: "A", noteModifiedDay: "1970-01-01", exportedDay: nil, title: "Cafe",
-            markdownPath: config.journalDir.appendingPathComponent("does-not-exist.md")
+            markdownPath: config.journalDir.appendingPathComponent("does-not-exist.md"), content: ""
         )
 
         do {

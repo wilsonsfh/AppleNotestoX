@@ -21,7 +21,6 @@ struct WikiExportAssembler: Sendable {
         config: WikiVaultConfig,
         exported: Date = Date()
     ) throws -> WikiExportResult {
-        try fileManager.createDirectory(at: config.journalDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: config.assetsDir, withIntermediateDirectories: true)
 
         let slug = WikiNaming.slug(from: title)
@@ -65,6 +64,9 @@ struct WikiExportAssembler: Sendable {
         // 2. Render the body.
         let rendered = MarkdownRenderer.render(blocks, inlineAsset: { inlineByID[$0] })
         warnings.append(contentsOf: rendered.warnings)
+        let category = AppleNoteCategory.classify(title: title, markdown: rendered.markdown)
+        let noteDir = config.appleNotesDir(for: category)
+        try fileManager.createDirectory(at: noteDir, withIntermediateDirectories: true)
 
         // 3. Copy + list any attachments never referenced inline.
         var unplacedLines: [String] = []
@@ -97,7 +99,7 @@ struct WikiExportAssembler: Sendable {
         let markdownFile = try WikiNaming.publishTracked(
             data: Data(body.utf8),
             preferredName: WikiNaming.markdownFilename(date: modified, slug: slug),
-            in: config.journalDir
+            in: noteDir
         )
         committed = true
 

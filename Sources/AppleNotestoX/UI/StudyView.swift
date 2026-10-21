@@ -160,10 +160,10 @@ struct StudyView: View {
                     Button("Copy opencode prompt") { state.copyBacklogPrompt() }
                     Button {
                         if let v = state.vaultURL {
-                            NSWorkspace.shared.open(v.appendingPathComponent("raw/journal"))
+                            NSWorkspace.shared.open(v.appendingPathComponent("raw/apple-notes"))
                         }
                     } label: { Image(systemName: "folder") }
-                    .help("Reveal raw/journal in Finder")
+                    .help("Reveal raw/apple-notes in Finder")
                     .accessibilityLabel("Reveal raw journal in Finder")
                 }
                 .controlSize(.small)

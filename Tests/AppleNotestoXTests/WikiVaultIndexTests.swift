@@ -31,6 +31,21 @@ final class WikiVaultIndexTests: XCTestCase {
         XCTAssertEqual(index["note-A"]?.first?.markdownPath.lastPathComponent, "2026-08-16-cafe-plan.md")
     }
 
+    func test_scan_capturesBodyContentAfterFrontmatter() throws {
+        let text = """
+        ---
+        apple_note_id: "note-A"
+        note_modified: "1970-01-01"
+        ---
+        Actual note body text.
+        """
+        try write(text, filename: "2026-08-16-cafe-plan.md")
+
+        let index = WikiVaultIndex.scan(journalDir: tmp)
+
+        XCTAssertEqual(index["note-A"]?.first?.content, "Actual note body text.")
+    }
+
     func test_scan_collectsAllEntriesForADuplicatedNoteID() throws {
         let fm = WikiNaming.frontmatter(
             noteID: "note-A", title: "Cafe Plan",
@@ -42,6 +57,20 @@ final class WikiVaultIndexTests: XCTestCase {
         let index = WikiVaultIndex.scan(journalDir: tmp)
 
         XCTAssertEqual(index["note-A"]?.count, 2)
+    }
+
+    func test_scan_noteDirs_recursesThroughCategoryFolders() throws {
+        let category = tmp.appendingPathComponent("career-and-work", isDirectory: true)
+        try FileManager.default.createDirectory(at: category, withIntermediateDirectories: true)
+        let fm = WikiNaming.frontmatter(
+            noteID: "note-A", title: "Career plan",
+            modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 0)
+        )
+        try fm.write(to: category.appendingPathComponent("2026-08-16-career-plan.md"), atomically: true, encoding: .utf8)
+
+        let index = WikiVaultIndex.scan(noteDirs: [tmp])
+
+        XCTAssertEqual(index["note-A"]?.count, 1)
     }
 
     func test_scan_ignoresNonMarkdownAndUnparsableFiles() throws {
@@ -82,5 +111,17 @@ final class WikiVaultIndexTests: XCTestCase {
 
     func test_isUpToDate_falseWhenNoteIDNotIndexed() {
         XCTAssertFalse(WikiVaultIndex.isUpToDate(noteID: "unknown", modified: Date(), index: [:]))
+    }
+
+    func test_scan_bodyContentExcludesTheProvenanceBanner() throws {
+        let fm = WikiNaming.frontmatter(
+            noteID: "note-A", title: "Cafe Plan",
+            modified: Date(timeIntervalSince1970: 0), exported: Date(timeIntervalSince1970: 0)
+        )
+        try write(fm + "Actual note body text.\n", filename: "2026-08-16-cafe-plan.md")
+
+        let index = WikiVaultIndex.scan(journalDir: tmp)
+
+        XCTAssertEqual(index["note-A"]?.first?.content, "Actual note body text.")
     }
 }
