@@ -11,7 +11,15 @@ enum WikiDuplicateAssets {
         var names = Set(matches(of: #"!\[\[([^\]]+)\]\]"#, in: markdown))
         let escapedSubpath = NSRegularExpression.escapedPattern(for: assetsSubpath)
         names.formUnion(matches(of: "\\(\(escapedSubpath)/([^)]+)\\)", in: markdown))
-        return names
+        // The exporter only ever writes bare filenames. Anything with a path
+        // separator or `..` could resolve outside the assets folder once
+        // appended to it, so it is never a deletion candidate.
+        return names.filter(isBareFilename)
+    }
+
+    private static func isBareFilename(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".."
+            && !name.contains("/") && !name.contains("\\")
     }
 
     private static func matches(of pattern: String, in text: String) -> [String] {

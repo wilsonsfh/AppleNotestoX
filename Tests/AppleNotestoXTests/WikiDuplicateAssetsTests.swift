@@ -49,4 +49,17 @@ final class WikiDuplicateAssetsTests: XCTestCase {
             []
         )
     }
+
+    func test_referencedAssetFilenames_ignoresNamesThatEscapeTheAssetsFolder() {
+        let markdown = """
+        ![[../../outside.txt]]
+        ![[nested/file.png]]
+        [doc](raw/assets/../secret.pdf)
+        ![[safe.png]]
+        """
+
+        let names = WikiDuplicateAssets.referencedAssetFilenames(in: markdown, assetsSubpath: "raw/assets")
+
+        XCTAssertEqual(names, ["safe.png"])
+    }
 }
