@@ -21,11 +21,11 @@ enum AppleNoteCategory: String, CaseIterable, Sendable {
             .split { !$0.isLetter && !$0.isNumber }
         let text = " " + words.joined(separator: " ") + " "
         let terms: [(Self, [String])] = [
-            (.healthAndWellbeing, ["therapy", "health", "sleep", "skincare", "wellbeing", "mental"]),
-            (.travelAndFinance, ["travel", "trip", "flight", "hotel", "expense", "budget", "finance", "resale"]),
-            (.hobbiesAndLifestyle, ["guitar", "music", "singing", "dance", "photography", "camera", "cooking", "clothes", "coffee", "keyboard", "dj"]),
-            (.careerAndWork, ["career", "interview", "resume", "job", "intern", "work", "cloudflare", "customer engineer", "solutions engineer"]),
-            (.technologyAndLearning, ["programming", "coding", "software", "engineering", "ai", "llm", "cloud", "react", "aws", "hft"]),
+            (.healthAndWellbeing, ["health", "sleep", "exercise", "doctor", "diet", "wellbeing"]),
+            (.travelAndFinance, ["travel", "trip", "flight", "hotel", "expense", "budget", "finance", "savings"]),
+            (.hobbiesAndLifestyle, ["hobby", "music", "dance", "photography", "camera", "cooking", "gaming", "reading", "sport"]),
+            (.careerAndWork, ["career", "interview", "resume", "job", "intern", "work", "meeting", "colleague", "job offer"]),
+            (.technologyAndLearning, ["programming", "coding", "software", "engineering", "ai", "llm", "cloud", "react", "python", "database"]),
             (.personalReflections, ["reflection", "myself", "relationship", "feeling", "stress", "confidence", "personal"]),
             (.referenceAndLists, ["list", "account", "subscription", "reference"])
         ]

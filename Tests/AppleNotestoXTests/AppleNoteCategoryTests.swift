@@ -19,7 +19,7 @@ final class AppleNoteCategoryTests: XCTestCase {
     }
 
     func test_classify_matchesMultiWordKeywords() {
-        let category = AppleNoteCategory.classify(title: "Prep", markdown: "Solutions engineer interview next week.")
+        let category = AppleNoteCategory.classify(title: "Prep", markdown: "Got a job offer after the interview.")
 
         XCTAssertEqual(category, .careerAndWork)
     }
