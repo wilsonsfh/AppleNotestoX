@@ -1,22 +1,40 @@
 # AppleNotestoX
 
-**Status: complete.** Every planned capability is built, the app builds and runs from a clean
-clone on Command Line Tools alone, and the remaining items are manual acceptance gates that need
-a human at a Mac (see [Verification, Status, and Limitations](#verification-status-and-limitations)).
-No further feature work is planned.
-
-## Status
-
-**Last reviewed: 2026-08-11 — Done — maintenance only**
-
-- Feature work complete. `make check` re-run this review: build green, 103 node tests passing.
-- Clean-clone portability shipped in `1cd694f` (Makefile entry points, `bin/doctor`, runtime `review/` resolution, no personal default vault path).
-- Outstanding items are manual acceptance gates only: a human at a Mac granting Automation and Speech permissions, and `swift test` under full Xcode.
-- Public on `github.com/wilsonsfh/AppleNotestoX`, default branch `main`, in sync.
-
 AppleNotestoX is a macOS app for turning Apple Notes into durable, reviewable knowledge. It exports selected notes to a local Personal Wiki or Notion, preserves inline media placement, can ingest video as an on-device transcript with keyframes, and pairs the resulting wiki with a static study app.
 
 The project is local-first by default: capture writes provenance-stamped source material to disk, while interpretation and cross-linking remain a separate, LLM-owned synthesis step.
+
+![Demo: pick notes, export them to a Markdown wiki, then review duplicates](docs/screenshots/demo.gif)
+
+## Why I built this
+
+Taking notes and keeping them organised is often a chore. There's always a trade-off: Apple Notes is quick and convenient for jotting things down but gets messy, while Obsidian paired with Karpathy's LLM wiki idea is very organised and fits into the rest of my workflow, but is slower to capture into. I wanted to solve that for myself, but also build it so other note-taking apps could plug in, so everything ends up tidy in one place no matter where it was written.
+
+AppleNotestoX is what came out of that: a macOS app that pulls notes out of Apple Notes and exports them into a Markdown wiki (or Notion), keeping images in place and tagging every file with the note it came from. It also has an LLM step that groups related notes by topic, on-device video transcription, and a small study app with flashcards built from the wiki.
+
+The hardest part wasn't the APIs and protocols each app needs to talk to each other. Those are well documented, and with AI helping dig through the docs, setting up each connection was the easy bit. The hard part was the design: working out a flow where every app only has to be translated into one shared format and one folder layout, so adding another app means writing one adapter instead of rewiring everything. Notion was the first real test of that, since it's another heavy note-taking app, and its importer drops notes into exactly the same structure Apple Notes does.
+
+## Screenshots
+
+All screenshots use a demo Notes folder and a throwaway demo vault.
+
+| | |
+|---|---|
+| ![Study tab](docs/screenshots/01-study.png) | ![Recategorise Apple Notes](docs/screenshots/02-transfer-recategorise.png) |
+| **Study**: wiki counts, recent concepts, and raw notes still waiting for synthesis. | **Recategorise Apple Notes**: an LLM groups the ticked notes into one new note, previewed before anything is written. |
+| ![Export to Personal Wiki](docs/screenshots/03-export-to-wiki.png) | ![Export finished](docs/screenshots/04-export-done.png) |
+| **Personal Wiki export**: search, tick notes, pick a vault. | **Done**: each note lands in `raw/apple-notes/<category>/`, tagged with its Apple Note ID. |
+| ![Duplicates tab](docs/screenshots/05-duplicates.png) | ![Compare versions](docs/screenshots/06-compare-versions.png) |
+| **Duplicates**: repeat exports of the same note, plus different notes with near-identical text. | **Compare versions**: a line diff before choosing what to move to the Trash. |
+
+## Status
+
+**Last reviewed: 2026-10-22 — Done — maintenance only**
+
+- Feature work complete. `swift test` under full Xcode: 199 tests passing. `make check`: build green, 103 node tests passing.
+- Clean-clone portability shipped in `1cd694f` (Makefile entry points, `bin/doctor`, runtime `review/` resolution, no personal default vault path).
+- Outstanding items are manual acceptance gates only: live Groq/GLM calls and writing a merged note back into Notes.
+- Public on `github.com/wilsonsfh/AppleNotestoX`, default branch `main`, in sync.
 
 ## Motivation
 
@@ -174,7 +192,7 @@ you copy the built binary elsewhere, either keep `review/` beside it or point
 
 ```bash
 make check     # build + node tool gates; works on Command Line Tools
-swift test     # the 18 XCTest suites; requires full Xcode
+swift test     # the 32 XCTest suites; requires full Xcode
 ```
 
 `make check` is the gate that runs anywhere. `swift test` needs full Xcode, because
@@ -267,7 +285,7 @@ Then open `http://localhost:8080`. Flashcard scheduling and streaks stay in that
 
 | Area | Verified in this repository | Pending or limited |
 |---|---|---|
-| Swift app | `swift build` recorded green; launch smoke completed; pure-logic harnesses cover Notes process handling, date parsing, wiki rendering/assembly, video helpers, study parsing, and backlog behavior | Full committed XCTest suite requires Xcode; the documented Command Line Tools environment reports missing `XCTest` |
+| Swift app | `swift build` recorded green; launch smoke completed; pure-logic harnesses cover Notes process handling, date parsing, wiki rendering/assembly, video helpers, study parsing, and backlog behavior | Full XCTest suite run under Xcode on 2026-10-22: 199 tests passing. The Command Line Tools environment still reports missing `XCTest` |
 | Apple Notes to wiki | Code complete; Markdown, provenance, naming, collision handling, positional assets, and warning paths were logic-verified | Manual acceptance against a real screenshot-heavy note and Notes Automation permission remains pending |
 | Search and editorial UI | `swift build`, standalone search/action-state/AppState harnesses, synthetic 900×600 and 1100×700 screenshots, and final code/design reviews are green | XCTest still requires Xcode; macOS TCC/Assistive Access blocked headed VoiceOver and keyboard automation |
 | Video | Build, pure video-support/transcript logic, and embedded Speech usage descriptions were verified | Real `.mov` import, Speech permission, and long-video timestamp acceptance remain pending |
