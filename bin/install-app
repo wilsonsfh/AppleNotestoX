@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Builds a release AppleNotestoX.app and installs it into /Applications.
+# The previous copy goes to the Trash, so an install can be undone.
+#
+#   make install        (or: bin/install-app)
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+APP_NAME="AppleNotestoX"
+DEST="/Applications/${APP_NAME}.app"
+STAGE="build/${APP_NAME}.app"
+
+echo "==> Building release"
+swift build -c release
+BIN_DIR="$(swift build -c release --show-bin-path)"
+
+echo "==> Packaging ${STAGE}"
+if [ -e "$STAGE" ]; then mv "$STAGE" "$(mktemp -d)/"; fi
+mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
+cp "$BIN_DIR/$APP_NAME" "$STAGE/Contents/MacOS/$APP_NAME"
+cp -R "$BIN_DIR/${APP_NAME}_${APP_NAME}.bundle" "$STAGE/Contents/Resources/"
+cat > "$STAGE/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>AppleNotestoX</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.applenotestox.app</string>
+    <key>CFBundleName</key>
+    <string>AppleNotestoX</string>
+    <key>CFBundleDisplayName</key>
+    <string>Apple Notes to X</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AppleNotestoX reads your Apple Notes so it can export them into your knowledge wiki.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>AppleNotestoX transcribes the videos you choose into your knowledge wiki, on-device.</string>
+</dict>
+</plist>
+PLIST
+codesign --force --deep --sign - "$STAGE"
+
+echo "==> Installing to ${DEST}"
+osascript -e "tell application id \"com.applenotestox.app\" to quit" >/dev/null 2>&1 || true
+sleep 1
+if [ -e "$DEST" ]; then
+  if command -v trash >/dev/null 2>&1; then trash "$DEST"; else mv "$DEST" "$HOME/.Trash/${APP_NAME}-$(date +%Y%m%d-%H%M%S).app"; fi
+  echo "    previous version moved to the Trash"
+fi
+cp -R "$STAGE" "$DEST"
+echo "==> Installed. Open it with: open \"$DEST\""

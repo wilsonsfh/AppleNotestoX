@@ -159,6 +159,8 @@ make doctor    # checks macOS, toolchain, node, and reports what is missing
 make run       # builds, then launches the app
 ```
 
+To install it as a normal app instead, run `make install`: it builds a release `.app`, moves any previous copy to the Trash, and installs the new one into `/Applications`. Re-run it to update.
+
 `make` is a thin wrapper; the underlying commands are still `swift build` and
 `swift run AppleNotestoX` if you prefer them directly. `make help` lists every target.
 

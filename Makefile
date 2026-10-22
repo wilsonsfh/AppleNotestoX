@@ -6,7 +6,7 @@ VAULT ?=
 
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor build run study notion check clean
+.PHONY: help doctor build run install study notion check clean
 
 help: ## Show this help
 	@echo "AppleNotestoX"
@@ -25,6 +25,9 @@ build: ## Build the app (Command Line Tools are sufficient)
 
 run: build ## Launch the app
 	swift run AppleNotestoX
+
+install: ## Build a release .app and install it into /Applications (old copy goes to the Trash)
+	@bin/install-app
 
 study: ## Regenerate review/study-data.js from a vault, then open the study app
 	@if [ -z "$(VAULT)" ]; then \
