@@ -16,14 +16,21 @@ enum WikiDuplicateFinder {
 
     /// Note IDs with more than one entry in `index`, each group's own
     /// entries sorted newest-exported first (entries with no `exportedDay`
-    /// sort last, since there's nothing to prefer them by).
+    /// sort last, since there's nothing to prefer them by). Exports from the
+    /// same day are ordered by the note's modified day, then filename, so an
+    /// edited note re-exported the same day still puts its newer content first.
     static func duplicateGroups(in index: [String: [WikiVaultIndex.Entry]]) -> [Group] {
         index
             .compactMap { noteID, entries -> Group? in
                 guard entries.count > 1 else { return nil }
                 let sorted = entries.sorted { lhs, rhs in
                     switch (lhs.exportedDay, rhs.exportedDay) {
-                    case let (l?, r?): return l > r
+                    case let (l?, r?) where l != r: return l > r
+                    case (.some, .some):
+                        if lhs.noteModifiedDay != rhs.noteModifiedDay {
+                            return lhs.noteModifiedDay > rhs.noteModifiedDay
+                        }
+                        return lhs.markdownPath.lastPathComponent > rhs.markdownPath.lastPathComponent
                     case (nil, nil): return false
                     case (nil, _): return false
                     case (_, nil): return true

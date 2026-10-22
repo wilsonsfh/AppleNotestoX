@@ -40,6 +40,24 @@ final class WikiDuplicateFinderTests: XCTestCase {
         XCTAssertEqual(groups[0].entries.map(\.markdownPath.lastPathComponent), ["new.md", "old.md"])
     }
 
+    func test_duplicateGroups_sameExportDay_newerNoteModifiedDaySortsFirst() {
+        // Re-exporting an edited note on the same day as the first export
+        // gives both files the same `exported` day; the newer content must
+        // still be the one marked newest, in either input order.
+        for order in [["old.md", "new.md"], ["new.md", "old.md"]] {
+            let entries = order.map { name in
+                entry(
+                    noteID: "A", day: name == "new.md" ? "2026-01-05" : "2026-01-01",
+                    exported: "2026-01-05", filename: name
+                )
+            }
+
+            let groups = WikiDuplicateFinder.duplicateGroups(in: ["A": entries])
+
+            XCTAssertEqual(groups[0].entries.map(\.markdownPath.lastPathComponent), ["new.md", "old.md"])
+        }
+    }
+
     func test_duplicateGroups_entriesWithNoExportedDaySortLast() {
         let index: [String: [WikiVaultIndex.Entry]] = [
             "A": [
