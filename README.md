@@ -16,7 +16,7 @@ The hardest part wasn't the APIs and protocols each app needs to talk to each ot
 
 ## Screenshots
 
-All screenshots use a demo Notes folder and a throwaway demo vault.
+All screenshots use made-up demo data from [`demo/`](demo/README.md), not real notes. You can recreate them yourself.
 
 | | |
 |---|---|
